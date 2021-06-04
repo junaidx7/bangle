@@ -1,5 +1,5 @@
 {
-  "name": "editor-manager-context",
+  "name": "object-sync",
   "version": "0.0.0",
   "authors": [
     {
@@ -18,13 +18,5 @@
   "main": "index.js",
   "module": "index.js",
   "scripts": {},
-  "publishConfig": {},
-  "dependencies": {
-    "@bangle.dev/core": "0.17.0",
-    "config": "workspace:*",
-    "prosemirror-dev-tools": "github:kepta/prosemirror-dev-tools#v3.3.4",
-    "react": "16.14.0",
-    "react-dom": "16.14.0",
-    "ui-context": "workspace:*"
-  }
+  "publishConfig": {}
 }

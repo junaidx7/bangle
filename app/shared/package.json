@@ -1,5 +1,5 @@
 {
-  "name": "inline-emoji",
+  "name": "shared",
   "version": "0.0.0",
   "authors": [
     {
@@ -20,21 +20,17 @@
   "scripts": {},
   "dependencies": {
     "@bangle.dev/core": "0.17.0",
-    "@bangle.dev/emoji": "0.17.0",
     "@bangle.dev/markdown": "0.17.0",
-    "@bangle.dev/react": "0.17.0",
-    "@bangle.dev/react-emoji-suggest": "0.17.0",
-    "@bangle.dev/tooltip": "0.17.0",
-    "emoji-lookup-data": "^1.2.0",
-    "extension-helpers": "workspace:*",
-    "react": "16.14.0",
-    "react-dom": "16.14.0",
-    "utils": "workspace:*",
-    "workspace": "workspace:*"
-  },
-  "devDependencies": {
-    "@testing-library/react": "^11.2.6",
-    "@testing-library/user-event": "^13.1.5"
+    "@bangle.dev/markdown-front-matter": "0.17.0",
+    "bangle-io-context": "workspace:*",
+    "collab-extension": "workspace:*",
+    "collapsible-heading": "workspace:*",
+    "core-js": "^3.13.1",
+    "editor-core": "workspace:*",
+    "image-extension": "workspace:*",
+    "inline-backlink": "workspace:*",
+    "inline-command-palette": "workspace:*",
+    "inline-emoji": "workspace:*"
   },
   "publishConfig": {
     "access": "restricted"

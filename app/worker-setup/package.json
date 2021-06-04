@@ -1,5 +1,5 @@
 {
-  "name": "workspace",
+  "name": "worker-setup",
   "version": "0.0.0",
   "authors": [
     {
@@ -18,23 +18,13 @@
   "main": "index.js",
   "module": "index.js",
   "scripts": {},
-  "devDependencies": {
-    "@testing-library/react": "^11.2.6",
-    "bangle-io-context": "workspace:*"
-  },
   "dependencies": {
-    "@bangle.dev/core": "0.17.0",
-    "@octokit/rest": "^18.5.3",
-    "baby-fs": "workspace:*",
-    "config": "workspace:*",
-    "idb-keyval": "^5.0.5",
-    "markdown": "workspace:*",
-    "react": "16.14.0",
-    "react-dom": "16.14.0",
-    "react-router-dom": "^5.2.0",
-    "utils": "workspace:*"
+    "comlink": "^4.3.1",
+    "naukar-proxy": "workspace:*",
+    "naukar-worker": "workspace:*",
+    "shared": "workspace:*"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "restricted"
   }
 }
