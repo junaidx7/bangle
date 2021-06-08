@@ -1,5 +1,5 @@
 {
-  "name": "e2e",
+  "name": "app-state-context",
   "version": "0.0.0",
   "authors": [
     {
@@ -17,21 +17,12 @@
   },
   "main": "index.js",
   "module": "index.js",
-  "scripts": {
-    "g:e2e": "yarn jest"
-  },
+  "scripts": {},
   "publishConfig": {
-    "access": "public"
+    "access": "restricted"
   },
   "dependencies": {
-    "jest": "^27.0.4",
-    "jest-circus": "^27.0.4",
-    "jest-environment-puppeteer": "^5.0.4",
-    "jest-puppeteer": "^5.0.4",
-    "prettier": "^2.3.0"
-  },
-  "devDependencies": {
-    "http-server": "^0.12.3",
-    "puppeteer": "^10.0.0"
+    "react": "16.14.0",
+    "react-dom": "16.14.0"
   }
 }

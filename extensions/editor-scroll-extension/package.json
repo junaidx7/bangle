@@ -1,5 +1,5 @@
 {
-  "name": "e2e",
+  "name": "editor-scroll-extension",
   "version": "0.0.0",
   "authors": [
     {
@@ -17,21 +17,16 @@
   },
   "main": "index.js",
   "module": "index.js",
-  "scripts": {
-    "g:e2e": "yarn jest"
+  "scripts": {},
+  "dependencies": {
+    "@bangle.dev/core": "0.17.1",
+    "app-state-context": "workspace:*",
+    "debounce-fn": "^5.0.0",
+    "extension-helpers": "workspace:*",
+    "react": "16.14.0",
+    "utils": "workspace:*"
   },
   "publishConfig": {
-    "access": "public"
-  },
-  "dependencies": {
-    "jest": "^27.0.4",
-    "jest-circus": "^27.0.4",
-    "jest-environment-puppeteer": "^5.0.4",
-    "jest-puppeteer": "^5.0.4",
-    "prettier": "^2.3.0"
-  },
-  "devDependencies": {
-    "http-server": "^0.12.3",
-    "puppeteer": "^10.0.0"
+    "access": "restricted"
   }
 }
