@@ -1,5 +1,5 @@
 {
-  "name": "inline-palette",
+  "name": "workspace-hooks",
   "version": "0.0.0",
   "authors": [
     {
@@ -18,25 +18,23 @@
   "main": "index.js",
   "module": "index.js",
   "scripts": {},
-  "publishConfig": {
-    "access": "restricted"
-  },
-  "peerDependencies": {
-    "@bangle.dev/core": "*",
-    "@bangle.dev/react": "*",
-    "@bangle.dev/tooltip": "*",
-    "react": "*",
-    "react-dom": "*",
-    "utils": "*",
-    "workspace": "*"
-  },
   "devDependencies": {
     "@bangle.dev/core": "0.17.2",
-    "@bangle.dev/react": "0.17.2",
-    "@bangle.dev/tooltip": "0.17.2",
-    "react": "16.14.0",
+    "@testing-library/react": "^11.2.6",
+    "@testing-library/react-hooks": "^5.1.2",
+    "baby-fs": "workspace:*",
+    "bangle-io-context": "workspace:*",
     "react-dom": "16.14.0",
+    "react-test-renderer": "16.14.0"
+  },
+  "dependencies": {
+    "config": "workspace:*",
+    "react": "16.14.0",
+    "react-router-dom": "^5.2.0",
     "utils": "workspace:*",
     "workspace": "workspace:*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
