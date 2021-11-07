@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import React, { useCallback, useEffect, useState } from 'react';
 
 import type { BangleEditor as CoreBangleEditor } from '@bangle.dev/core';
@@ -15,11 +14,6 @@ import { useWorkspaceContext } from '@bangle.io/workspace-context';
 
 const LOG = false;
 let log = LOG ? console.log.bind(console, 'play/Editor') : () => {};
-
-Editor.propTypes = {
-  wsPath: PropTypes.string.isRequired,
-  editorId: PropTypes.number.isRequired,
-};
 
 export function Editor({
   editorId,
@@ -140,7 +134,7 @@ function EditorInner({
       onReady={onEditorReady}
       renderNodeViews={renderNodeViews}
       focusOnInit={false}
-      className="bangle-editor-inner-container"
+      className={`editor-container_editor editor-container_editor-${editorId}`}
     >
       {extensionRegistry.renderExtensionEditorComponents({ wsPath, editorId })}
     </BangleEditor>
