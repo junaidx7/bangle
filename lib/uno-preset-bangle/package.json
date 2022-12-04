@@ -1,5 +1,5 @@
 {
-  "name": "@bangle.io/style",
+  "name": "@bangle.io/uno-preset-bangle",
   "version": "0.0.0",
   "authors": [
     {
@@ -11,7 +11,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/bangle-io/bangle-io.git",
-    "directory": "app/style"
+    "directory": "lib/uno-preset-bangle"
   },
   "bugs": {
     "url": "https://github.com/bangle-io/bangle-io/issues"
@@ -21,15 +21,14 @@
   "publishConfig": {
     "access": "public"
   },
-  "devDependencies": {
-    "autoprefixer": "^10.4.4",
-    "postcss": "^8.4.16"
-  },
   "dependencies": {
-    "@bangle.io/constants": "workspace:*",
-    "@bangle.io/core-theme": "workspace:*",
-    "@bangle.io/shared-types": "workspace:*",
-    "@unocss/reset": "^0.47.5",
+    "@bangle.io/ui-vars": "workspace:*",
+    "@unocss/core": "^0.47.5",
+    "@unocss/preset-mini": "^0.47.5",
+    "@unocss/preset-uno": "^0.47.5",
+    "@unocss/preset-wind": "^0.47.5"
+  },
+  "devDependencies": {
     "tslib": "^2.4.1",
     "typescript": "^4.9.3"
   },
