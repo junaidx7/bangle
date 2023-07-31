@@ -8,8 +8,8 @@ import {
   Selection,
 } from '@bangle.dev/pm';
 
-import { intersectionObserverPluginKey } from '@bangle.io/editor-common';
-import { hasPluginStateChanged } from '@bangle.io/utils';
+import { intersectionObserverPluginKey } from './constants';
+import { hasPluginStateChanged } from './helpers';
 
 const name = 'collapsible_heading_deco';
 // TODO even after optimizations, this is far for perfect
@@ -105,10 +105,10 @@ function buildDeco(state: EditorState) {
       match.pos + 1,
       (view: EditorView) => {
         let wrapper = document.createElement('span');
-        wrapper.className = 'B-core-editor_deco-collapse-positioner';
+        wrapper.className = 'B-editor-common_deco-collapse-positioner';
         // wrapper.setAttribute('data-bangle-pos', match.pos + '');
         const child = document.createElement('span');
-        child.className = 'B-core-editor_deco-collapse';
+        child.className = 'B-editor-common_deco-collapse';
 
         wrapper.appendChild(child);
 
@@ -133,7 +133,7 @@ function buildDeco(state: EditorState) {
 
         child.appendChild(svg);
 
-        svg.setAttribute('class', 'B-core-editor_deco-collapse-child');
+        svg.setAttribute('class', 'B-editor-common_deco-collapse-child');
 
         svg.appendChild(
           getNode('path', {
