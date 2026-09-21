@@ -408,8 +408,10 @@ describe('batching', () => {
 });
 
 describe('path filtering', () => {
-  const notDotted = (path: string) =>
-    !path.split('/').some((segment) => segment.startsWith('.'));
+  const notDotted = (path: string): 'sync' | 'ignore' =>
+    path.split('/').some((segment) => segment.startsWith('.'))
+      ? 'ignore'
+      : 'sync';
 
   async function runFiltered(
     remote: FakeRemote,
@@ -422,7 +424,7 @@ describe('path filtering', () => {
       fs: local.fs,
       state,
       now: NOW,
-      isSyncablePath: notDotted,
+      classifyPath: notDotted,
     });
   }
 
@@ -459,5 +461,95 @@ describe('path filtering', () => {
 
     expect(result.pushed).toEqual(['note.md']);
     expect(remote.paths()).toEqual(['note.md']);
+  });
+});
+
+describe('paths the app cannot represent', () => {
+  // Mirrors the real rule: workspace paths forbid < > : " \ | ? * and control
+  // characters, all of which are legal on GitHub.
+  const classify = (path: string): 'sync' | 'ignore' | 'unsupported' => {
+    if (path.split('/').some((segment) => segment.startsWith('.'))) {
+      return 'ignore';
+    }
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: mirrors the real path validator, which rejects control characters too
+    return /[<>:"\\|?*\u0000-\u001F]/.test(path) ? 'unsupported' : 'sync';
+  };
+
+  async function runClassified(
+    remote: FakeRemote,
+    local: ReturnType<typeof makeFs>,
+    state: WorkspaceSyncState,
+  ) {
+    return syncWorkspace({
+      wsName: 'notes',
+      api: remote.asApi(),
+      fs: local.fs,
+      state,
+      now: NOW,
+      classifyPath: classify,
+    });
+  }
+
+  test('one unnameable file does not abort the whole sync', async () => {
+    const remote = new FakeRemote();
+    remote.seed('Notes/Does this quick Note move?.md', 'awkward');
+    remote.seed('Notes/ordinary.md', 'fine');
+    remote.seed('Notes/another.md', 'also fine');
+    const local = makeFs();
+
+    const { result } = await runClassified(remote, local, emptySyncState());
+
+    // The other 2 still arrive — the real failure was all-or-nothing.
+    expect(result.pulled.sort()).toEqual([
+      'Notes/another.md',
+      'Notes/ordinary.md',
+    ]);
+  });
+
+  test('reports the skipped path instead of dropping it silently', async () => {
+    const remote = new FakeRemote();
+    remote.seed('Notes/Does this quick Note move?.md', 'awkward');
+    remote.seed('Notes/ordinary.md', 'fine');
+    const local = makeFs();
+
+    const { result } = await runClassified(remote, local, emptySyncState());
+
+    expect(result.skipped).toEqual(['Notes/Does this quick Note move?.md']);
+  });
+
+  test('leaves the unnameable file untouched on the remote', async () => {
+    const remote = new FakeRemote();
+    remote.seed('Notes/Does this quick Note move?.md', 'awkward');
+    const local = makeFs();
+
+    await runClassified(remote, local, emptySyncState());
+
+    expect(remote.contentAt('Notes/Does this quick Note move?.md')).toBe(
+      'awkward',
+    );
+    expect(local.paths()).toEqual([]);
+  });
+
+  test('ignored paths are not reported as skipped', async () => {
+    const remote = new FakeRemote();
+    remote.seed('.github/workflows/ci.yml', 'ci');
+    remote.seed('note.md', 'fine');
+    const local = makeFs();
+
+    const { result } = await runClassified(remote, local, emptySyncState());
+
+    // Ignoring CI config is intended; reporting it would be noise.
+    expect(result.skipped).toEqual([]);
+    expect(result.pulled).toEqual(['note.md']);
+  });
+
+  test('a path unnameable on both sides is reported once', async () => {
+    const remote = new FakeRemote();
+    remote.seed('bad?.md', 'remote');
+    const local = makeFs({ 'bad?.md': 'local' });
+
+    const { result } = await runClassified(remote, local, emptySyncState());
+
+    expect(result.skipped).toEqual(['bad?.md']);
   });
 });

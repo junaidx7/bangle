@@ -13,6 +13,16 @@ import type { SyncRecord, WorkspaceSyncState } from './github-sync-store';
  * The slice of a filesystem the sync engine needs. Kept narrow and
  * repo-relative so the engine can be tested against a plain Map.
  */
+/**
+ * What a sync should do with a repo path.
+ *
+ * `ignore` and `unsupported` both exclude the path, but they mean opposite
+ * things to the user: ignoring `.github/` is intended and silent, whereas a
+ * note this app cannot name is a real file being left behind and has to be
+ * reported.
+ */
+export type PathDisposition = 'sync' | 'ignore' | 'unsupported';
+
 export interface SyncFs {
   listPaths: (wsName: string, signal?: AbortSignal) => Promise<string[]>;
   read: (wsName: string, path: string) => Promise<Uint8Array | undefined>;
@@ -83,7 +93,7 @@ export async function syncWorkspace({
   state,
   now = new Date(),
   signal,
-  isSyncablePath = () => true,
+  classifyPath = () => 'sync',
 }: {
   wsName: string;
   api: GithubApi;
@@ -92,25 +102,38 @@ export async function syncWorkspace({
   now?: Date;
   signal?: AbortSignal;
   /**
-   * Decides which repo paths are workspace content. A notes repo is still a
-   * git repo: without this, `.github/workflows`, `dist/`, and `node_modules`
-   * would all be mirrored into the browser and listed as notes.
+   * Decides what a sync does with each repo path. A notes repo is still a git
+   * repo: without this, `.github/workflows`, `dist/`, and `node_modules` would
+   * all be mirrored into the browser and listed as notes.
    *
-   * Paths this rejects are inert — never pulled, never pushed, never deleted
-   * on either side — so pointing at a repo that also holds code leaves that
-   * code strictly alone.
+   * Excluded paths are inert — never pulled, never pushed, never deleted on
+   * either side — so pointing at a repo that also holds code leaves that code
+   * strictly alone. Anything classified `unsupported` is additionally reported
+   * back so it can be surfaced instead of vanishing.
    */
-  isSyncablePath?: (repoPath: string) => boolean;
+  classifyPath?: (repoPath: string) => PathDisposition;
 }): Promise<{ result: SyncResult; state: WorkspaceSyncState }> {
   const head = await api.getHead(signal);
   const remoteEntries = await api.listFiles(signal);
+
+  // Collected across both sides, so a path present remotely and locally is
+  // reported once rather than twice.
+  const skipped = new Set<string>();
+  const include = (path: string): boolean => {
+    const disposition = classifyPath(path);
+    if (disposition === 'unsupported') {
+      skipped.add(path);
+    }
+    return disposition === 'sync';
+  };
+
   const remote = new Map<string, RemoteEntry>(
     remoteEntries
-      .filter((entry) => isSyncablePath(entry.path))
+      .filter((entry) => include(entry.path))
       .map((entry) => [entry.path, entry]),
   );
   const localPaths = new Set(
-    (await fs.listPaths(wsName, signal)).filter((path) => isSyncablePath(path)),
+    (await fs.listPaths(wsName, signal)).filter((path) => include(path)),
   );
 
   const records = { ...state.records };
@@ -122,6 +145,7 @@ export async function syncWorkspace({
     deletedLocally: [],
     deletedRemotely: [],
     conflicts: [],
+    skipped: [],
     commitSha: null,
     headSha: head.commitSha,
   };
@@ -274,6 +298,8 @@ export async function syncWorkspace({
       };
     }
   }
+
+  result.skipped = [...skipped].sort();
 
   return {
     result,

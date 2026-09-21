@@ -561,6 +561,10 @@ export const t = {
     github: {
       syncing: 'Syncing with GitHub...',
       syncUpToDate: 'Already up to date',
+      skippedNames: ({ count, first }: { count: number; first: string }) =>
+        count === 1
+          ? `Left "${first}" alone: its name uses a character notes cannot contain (< > : " \\ | ? *). Rename it on GitHub to sync it.`
+          : `Left ${count} files alone, including "${first}": their names use characters notes cannot contain (< > : " \\ | ? *). Rename them on GitHub to sync them.`,
       syncUnsupported: 'This workspace has nothing to sync.',
       syncButton: 'Sync',
       syncSummary: ({

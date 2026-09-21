@@ -122,6 +122,12 @@ export interface FileStorageSyncResult {
   deletedLocally: string[];
   deletedRemotely: string[];
   conflicts: FileStorageConflict[];
+  /**
+   * Remote paths this app cannot represent, so they were left untouched on
+   * both sides. Reported rather than dropped quietly: the file is real and
+   * visible on GitHub, and silence would look like data loss.
+   */
+  skipped: string[];
   /** Null when the sync was read-only, i.e. nothing local needed pushing. */
   commitSha: string | null;
   headSha: string;

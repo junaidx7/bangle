@@ -488,6 +488,10 @@ export const t = {
     github: {
       syncing: 'Synchronisierung mit GitHub...',
       syncUpToDate: 'Bereits aktuell',
+      skippedNames: ({ count, first }: { count: number; first: string }) =>
+        count === 1
+          ? `"${first}" wurde ubersprungen: der Name enthalt ein Zeichen, das Notizen nicht haben durfen (< > : " \\ | ? *). Benenne die Datei auf GitHub um.`
+          : `${count} Dateien wurden ubersprungen, darunter "${first}": ihre Namen enthalten Zeichen, die Notizen nicht haben durfen (< > : " \\ | ? *). Benenne sie auf GitHub um.`,
       syncUnsupported: 'Dieser Arbeitsbereich hat nichts zu synchronisieren.',
       syncButton: 'Sync',
       syncSummary: ({

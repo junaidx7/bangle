@@ -8,7 +8,11 @@ export { FileStorageGithub } from './file-storage-github';
 export { FileStorageIndexedDB } from './file-storage-indexeddb';
 export { FileStorageMemory } from './file-storage-memory';
 export { FileStorageNativeFs } from './file-storage-nativefs';
-export type { ConflictInfo, SyncResult } from './github-sync';
+export type {
+  ConflictInfo,
+  PathDisposition,
+  SyncResult,
+} from './github-sync';
 export { conflictPathFor } from './github-sync';
 export type { AppDatabase } from './idb-database';
 export {

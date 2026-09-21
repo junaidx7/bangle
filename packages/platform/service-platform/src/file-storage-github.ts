@@ -25,7 +25,12 @@ import {
   WsPath,
 } from '@bangle.io/ws-path';
 import { assertSameWorkspaceRename } from './file-storage-utils';
-import { type SyncFs, type SyncResult, syncWorkspace } from './github-sync';
+import {
+  type PathDisposition,
+  type SyncFs,
+  type SyncResult,
+  syncWorkspace,
+} from './github-sync';
 import { GithubSyncStore } from './github-sync-store';
 
 export interface GithubWorkspaceConfig {
@@ -93,6 +98,27 @@ export class FileStorageGithub
 
   private static toWsPath(wsName: string, repoPath: string): string {
     return WsPath.fromParts(wsName, repoPath).wsPath;
+  }
+
+  /**
+   * Decides what a sync should do with one repo path.
+   *
+   * Two different exclusions live here. Paths the app deliberately ignores
+   * (dotfiles, build output) are policy and stay silent. Paths the app cannot
+   * name at all are not: workspace paths forbid `< > : " \\ | ? *`, which are
+   * perfectly legal on GitHub and common in notes ("Does this move?.md"), so
+   * those are reported instead of disappearing.
+   *
+   * Parsing safely is the point. Converting with `toWsPath` throws on exactly
+   * these names, and one such file would abort the entire sync rather than
+   * being skipped.
+   */
+  static classifyRepoPath(wsName: string, repoPath: string): PathDisposition {
+    const result = WsPath.safeFromParts(wsName, repoPath);
+    if (!result.ok || !result.data) {
+      return 'unsupported';
+    }
+    return isVisibleWorkspaceFilePath(result.data.wsPath) ? 'sync' : 'ignore';
   }
 
   async createFile(wsPath: string, file: File): Promise<void> {
@@ -318,12 +344,8 @@ export class FileStorageGithub
         fs: this.syncFs(),
         state,
         signal,
-        // Reuse the app's own notion of workspace content so a sync mirrors
-        // exactly what the file tree would show, and nothing else.
-        isSyncablePath: (repoPath) =>
-          isVisibleWorkspaceFilePath(
-            FileStorageGithub.toWsPath(wsName, repoPath),
-          ),
+        classifyPath: (repoPath) =>
+          FileStorageGithub.classifyRepoPath(wsName, repoPath),
       });
 
       await this.syncStore.set(wsName, nextState);

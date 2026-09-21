@@ -777,6 +777,19 @@ export const wsCommandHandlers = [
           summary,
         });
 
+        if (result.skipped.length > 0) {
+          // A file that exists on GitHub but never appears here would read as
+          // data loss, so it gets its own message rather than a silent
+          // omission from the summary.
+          toast.warning(
+            t.app.github.skippedNames({
+              count: result.skipped.length,
+              first: result.skipped[0] ?? '',
+            }),
+            { duration: Number.POSITIVE_INFINITY },
+          );
+        }
+
         if (result.conflicts.length > 0) {
           // Conflicts are the one outcome the user has to act on, so they get
           // their own persistent message rather than a line in the summary.
