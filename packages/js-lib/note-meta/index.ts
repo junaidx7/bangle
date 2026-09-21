@@ -15,3 +15,12 @@ export {
   TYPE_FIELD,
 } from './note-type';
 export { extractTitle } from './title';
+export type {
+  FilterableNote,
+  FilterCondition,
+  FilterGroup,
+  FilterNode,
+  FilterOp,
+  ViewDefinition,
+} from './view';
+export { compareViews, evaluateFilter, parseViewDefinition } from './view';

@@ -396,6 +396,22 @@ export const t = {
           `Bangle.io benötigt Ihre Berechtigung für den Zugriff auf "${wsName}"`,
         continueTextInitial: 'Erteilen',
       },
+      createType: {
+        title: 'Neuer Typ',
+        description:
+          'Ein Typ gruppiert Notizen und schlagt Eigenschaften fur neue vor. Er wird als normale Notiz gespeichert.',
+        inputLabel: 'Typname',
+        placeholder: 'Library',
+        submitText: 'Typ erstellen',
+      },
+      createView: {
+        title: 'Neue Ansicht',
+        description:
+          'Eine Ansicht ist ein gespeicherter Filter, abgelegt als Datei in views/.',
+        inputLabel: 'Name der Ansicht',
+        placeholder: 'Aktive Projekte',
+        submitText: 'Ansicht erstellen',
+      },
       createWorkspace: {
         invalidName: 'Ungültiger Arbeitsbereichsname',
         browserTitle: 'Browser',
@@ -527,6 +543,10 @@ export const t = {
     },
     errors: {
       workspace: {
+        typeAlreadyExists: ({ name }: { name: string }) =>
+          `Ein Typ namens "${name}" existiert bereits.`,
+        viewAlreadyExists: ({ name }: { name: string }) =>
+          `Eine Ansicht namens "${name}" existiert bereits.`,
         notOpened: 'Kein Arbeitsbereich geöffnet',
         noNoteOpenCannotToggleWideEditor:
           'Keine Notiz geöffnet, Breitbild-Editor kann nicht umgeschaltet werden.',
@@ -703,6 +723,7 @@ export const t = {
       switchWorkspaceButton: 'Arbeitsbereich wechseln',
     },
     pageWsHome: {
+      clearCollectionButton: 'Filter zurucksetzen',
       noNotesMessage: 'Keine Notizen in diesem Arbeitsbereich gefunden.',
       newNoteButton: 'Neue Notiz',
       switchWorkspaceButton: 'Arbeitsbereich wechseln',
@@ -733,6 +754,12 @@ export const t = {
       appSidebar: {
         openedLabel: 'Geöffnet',
         untypedLabel: 'Ohne Typ',
+        viewsLabel: 'Ansichten',
+        typesLabel: 'Typen',
+        addViewLabel: 'Neue Ansicht',
+        addTypeLabel: 'Neuer Typ',
+        noViewsLabel: 'Noch keine gespeicherten Ansichten.',
+        noTypesLabel: 'Noch keine Typen.',
         filesLabel: 'Dateien',
         fileTreeLabel: 'Arbeitsbereichsdateien',
         noteCount: ({ count }: { count: number }) =>

@@ -1,6 +1,7 @@
 import { useCoreServices } from '@bangle.io/context';
+import type { SelectedCollection } from '@bangle.io/service-core';
 import { Button, FunMissing } from '@bangle.io/ui-components';
-import { useAtomValue } from 'jotai';
+import { useAtomValue, useSetAtom } from 'jotai';
 import React from 'react';
 import { Actions } from '../components/common/actions';
 import { ContentSection } from '../components/common/content-section';
@@ -23,7 +24,13 @@ export function PageWsHome() {
   const currentWsName = useAtomValue(
     coreServices.workspaceState.$currentWsName,
   );
-  const notes = useNotesTableData();
+  const selectedCollection = useAtomValue(
+    coreServices.workbenchState.$selectedCollection,
+  );
+  const notes = useNotesTableData(selectedCollection);
+  const clearCollection = useSetAtom(
+    coreServices.workbenchState.$selectedCollection,
+  );
 
   const onNewNote = () =>
     coreServices.commandDispatcher.dispatch(
@@ -47,9 +54,21 @@ export function PageWsHome() {
             <ContentSection hasPadding>
               <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <h2 className="wrap-anywhere min-w-0 font-semibold text-2xl tracking-tight">
-                    {currentWsName}
-                  </h2>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <h2 className="wrap-anywhere min-w-0 font-semibold text-2xl tracking-tight">
+                      {selectedCollection?.label ?? currentWsName}
+                    </h2>
+                    {selectedCollection && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 shrink-0 text-xs"
+                        onClick={() => clearCollection(undefined)}
+                      >
+                        {t.app.pageWsHome.clearCollectionButton}
+                      </Button>
+                    )}
+                  </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <Button variant="outline" onClick={onSwitchWorkspace}>
                       {t.app.pageWsHome.switchWorkspaceButton}
@@ -122,9 +141,27 @@ export function PageWsHome() {
  * starred) and file stats. Rows are pre-ordered by last-opened recency so the
  * table shows a sensible order even before file stats stream in.
  */
-function useNotesTableData(): NotesTableNote[] {
+function useNotesTableData(
+  selectedCollection: SelectedCollection | undefined,
+): NotesTableNote[] {
   const coreServices = useCoreServices();
-  const noteWsPaths = useAtomValue(coreServices.workspaceState.$noteWsPaths);
+  const allNoteWsPaths = useAtomValue(coreServices.workspaceState.$noteWsPaths);
+  const notesByType = useAtomValue(coreServices.workspaceState.$notesByType);
+  const notesByView = useAtomValue(coreServices.workspaceState.$notesByView);
+
+  // Scoping happens on paths rather than on finished rows so the table keeps
+  // its stats, starring and recency behaviour unchanged.
+  const noteWsPaths = React.useMemo(() => {
+    if (!selectedCollection) {
+      return allNoteWsPaths;
+    }
+    const matched =
+      selectedCollection.kind === 'view'
+        ? notesByView.get(selectedCollection.key)
+        : notesByType.get(selectedCollection.key);
+    const allowed = new Set((matched ?? []).map((note) => note.wsPath));
+    return allNoteWsPaths.filter((path) => allowed.has(path.wsPath));
+  }, [allNoteWsPaths, notesByType, notesByView, selectedCollection]);
   const allRecentWsPaths = useAtomValue(
     coreServices.userActivityService.$allRecentWsPaths,
   );

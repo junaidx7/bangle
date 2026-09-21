@@ -1,10 +1,11 @@
 import { WORKSPACE_STORAGE_TYPE } from '@bangle.io/constants';
 import { useCoreServices } from '@bangle.io/context';
-import type { NoteMeta, WorkspaceSyncStatus } from '@bangle.io/service-core';
+import type { WorkspaceSyncStatus } from '@bangle.io/service-core';
 import { UNTYPED_NOTES_KEY } from '@bangle.io/service-core';
 import type {
+  SidebarCollection,
+  SidebarCollectionItem,
   SidebarSyncAction,
-  SidebarTypeGroup,
 } from '@bangle.io/ui-components';
 import { Sidebar, AppSidebar as UIAppSidebar } from '@bangle.io/ui-components';
 import { WsDirPath, WsPath } from '@bangle.io/ws-path';
@@ -80,45 +81,116 @@ export const AppSidebar = ({ children }: SidebarProps) => {
     },
   });
 
-  const typeGroups = React.useMemo<SidebarTypeGroup[]>(() => {
-    const activePathSet = new Set(activeWsPaths.map((wsPath) => wsPath.wsPath));
-    const toItems = (notes: readonly NoteMeta[]) =>
-      notes.map((note) => ({
-        title: note.title,
-        wsPath: note.wsPath,
-        isActive: activePathSet.has(note.wsPath),
-      }));
+  const noteViews = useAtomValue(workspaceState.$noteViews);
+  const notesByView = useAtomValue(workspaceState.$notesByView);
+  const [selectedCollection, setSelectedCollection] = useAtom(
+    workbenchState.$selectedCollection,
+  );
 
-    const groups: SidebarTypeGroup[] = noteTypes.map((type) => {
-      const notes = notesByType.get(type.name) ?? [];
-      return {
-        key: type.name,
-        label: type.label,
-        icon: type.icon,
-        color: type.color,
-        count: notes.length,
-        items: toItems(notes),
-        typeWsPath: type.wsPath,
-      };
-    });
+  const selectCollection = React.useCallback(
+    (next: {
+      kind: 'type' | 'view' | 'untyped';
+      key: string;
+      label: string;
+    }) => {
+      // Selecting the active collection again clears it, so the only way back
+      // to the whole workspace is not hunting for a separate reset control.
+      setSelectedCollection((current) =>
+        current?.kind === next.kind && current.key === next.key
+          ? undefined
+          : next,
+      );
+      if (activeWsName) {
+        navigation.goWorkspace(activeWsName);
+      }
+    },
+    [setSelectedCollection, navigation, activeWsName],
+  );
+
+  const viewCollection = React.useMemo<SidebarCollection>(() => {
+    const items: SidebarCollectionItem[] = noteViews.map((view) => ({
+      key: view.id,
+      label: view.name,
+      icon: view.icon,
+      color: view.color,
+      count: notesByView.get(view.id)?.length ?? 0,
+      isActive:
+        selectedCollection?.kind === 'view' &&
+        selectedCollection.key === view.id,
+      onSelect: () =>
+        selectCollection({ kind: 'view', key: view.id, label: view.name }),
+    }));
+
+    return {
+      label: t.app.components.appSidebar.viewsLabel,
+      items,
+      onAdd: () =>
+        commandDispatcher.dispatch(
+          'command::ui:create-view-dialog',
+          null,
+          'ui',
+        ),
+      addLabel: t.app.components.appSidebar.addViewLabel,
+      emptyLabel: t.app.components.appSidebar.noViewsLabel,
+    };
+  }, [
+    noteViews,
+    notesByView,
+    selectedCollection,
+    selectCollection,
+    commandDispatcher,
+  ]);
+
+  const typeCollection = React.useMemo<SidebarCollection>(() => {
+    const items: SidebarCollectionItem[] = noteTypes.map((type) => ({
+      key: type.name,
+      label: type.label,
+      icon: type.icon,
+      color: type.color,
+      count: notesByType.get(type.name)?.length ?? 0,
+      isActive:
+        selectedCollection?.kind === 'type' &&
+        selectedCollection.key === type.name,
+      onSelect: () =>
+        selectCollection({ kind: 'type', key: type.name, label: type.label }),
+    }));
 
     // Untyped notes go last but must be present: most notes in a real vault
-    // carry no type, and grouping that hid them would hide the workspace.
-    const untyped = notesByType.get(UNTYPED_NOTES_KEY) ?? [];
-    if (untyped.length > 0) {
-      groups.push({
+    // carry no type, and a list that hid them would hide the workspace.
+    const untypedCount = notesByType.get(UNTYPED_NOTES_KEY)?.length ?? 0;
+    if (untypedCount > 0) {
+      const label = t.app.components.appSidebar.untypedLabel;
+      items.push({
         key: UNTYPED_NOTES_KEY,
-        label: t.app.components.appSidebar.untypedLabel,
-        icon: undefined,
+        label,
+        icon: 'file-text',
         color: undefined,
-        count: untyped.length,
-        items: toItems(untyped),
-        typeWsPath: undefined,
+        count: untypedCount,
+        isActive: selectedCollection?.kind === 'untyped',
+        onSelect: () =>
+          selectCollection({ kind: 'untyped', key: UNTYPED_NOTES_KEY, label }),
       });
     }
 
-    return groups;
-  }, [noteTypes, notesByType, activeWsPaths]);
+    return {
+      label: t.app.components.appSidebar.typesLabel,
+      items,
+      onAdd: () =>
+        commandDispatcher.dispatch(
+          'command::ui:create-type-dialog',
+          null,
+          'ui',
+        ),
+      addLabel: t.app.components.appSidebar.addTypeLabel,
+      emptyLabel: t.app.components.appSidebar.noTypesLabel,
+    };
+  }, [
+    noteTypes,
+    notesByType,
+    selectedCollection,
+    selectCollection,
+    commandDispatcher,
+  ]);
 
   const getActionsForEntry = useSidebarFileActions({
     activeWsName,
@@ -212,7 +284,8 @@ export const AppSidebar = ({ children }: SidebarProps) => {
         }
         canCreateFiles={Boolean(activeWsName)}
         syncAction={syncAction}
-        typeGroups={typeGroups}
+        viewCollection={viewCollection}
+        typeCollection={typeCollection}
         onCreateDirectory={(pathPrefix) => {
           if (!activeWsName) {
             return;

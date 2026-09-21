@@ -1,4 +1,5 @@
 import { throwAppError } from '@bangle.io/base-utils';
+import { VIEWS_DIRECTORY } from '@bangle.io/service-core';
 import { toast } from '@bangle.io/ui-components';
 import { WsDirPath, WsPath } from '@bangle.io/ws-path';
 import { FilePlus } from 'lucide-react';
@@ -6,6 +7,62 @@ import { c, getCtx } from '../helper';
 import { validateInputPath, writeTextToClipboard } from '../utils';
 
 export const noteManagementHandlers = [
+  c(
+    'command::ui:create-type-dialog',
+    (
+      { workbenchState, workspaceState, fileSystem, navigation },
+      _args,
+      key,
+    ) => {
+      const { store } = getCtx(key);
+      store.set(workbenchState.$singleInputDialog, () => ({
+        dialogId: 'dialog::new-type-dialog',
+        title: t.app.dialogs.createType.title,
+        description: t.app.dialogs.createType.description,
+        inputLabel: t.app.dialogs.createType.inputLabel,
+        placeholder: t.app.dialogs.createType.placeholder,
+        submitText: t.app.dialogs.createType.submitText,
+        onSelect: (input) => {
+          void createTypeDocument({
+            name: input,
+            wsName: store.get(workspaceState.$currentWsName),
+            existing: store.get(workspaceState.$noteMetaIndex).types,
+            fileSystem,
+            navigation,
+          });
+        },
+      }));
+    },
+  ),
+
+  c(
+    'command::ui:create-view-dialog',
+    (
+      { workbenchState, workspaceState, fileSystem, navigation },
+      _args,
+      key,
+    ) => {
+      const { store } = getCtx(key);
+      store.set(workbenchState.$singleInputDialog, () => ({
+        dialogId: 'dialog::new-view-dialog',
+        title: t.app.dialogs.createView.title,
+        description: t.app.dialogs.createView.description,
+        inputLabel: t.app.dialogs.createView.inputLabel,
+        placeholder: t.app.dialogs.createView.placeholder,
+        submitText: t.app.dialogs.createView.submitText,
+        onSelect: (input) => {
+          void createViewFile({
+            name: input,
+            wsName: store.get(workspaceState.$currentWsName),
+            existing: store.get(workspaceState.$noteMetaIndex).views,
+            fileSystem,
+            navigation,
+          });
+        },
+      }));
+    },
+  ),
+
   c(
     'command::ui:create-note-dialog',
     ({ workbenchState }, { prefillName }, key) => {
@@ -614,3 +671,108 @@ export const noteManagementHandlers = [
     },
   ),
 ];
+
+/** Kebab-case, matching the filename convention Tolaria vaults use. */
+function toSlug(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+async function createTypeDocument({
+  name,
+  wsName,
+  existing,
+  fileSystem,
+  navigation,
+}: {
+  name: string;
+  wsName: string | undefined;
+  existing: readonly { name: string }[];
+  fileSystem: {
+    createTextFile: (wsPath: string, text: string) => Promise<void>;
+  };
+  navigation: { goWsPath: (wsPath: string) => void };
+}): Promise<void> {
+  const trimmed = name.trim();
+  const slug = toSlug(trimmed);
+  if (!wsName || !trimmed || !slug) {
+    return;
+  }
+
+  if (
+    existing.some((type) => type.name.toLowerCase() === trimmed.toLowerCase())
+  ) {
+    toast.error(t.app.errors.workspace.typeAlreadyExists({ name: trimmed }));
+    return;
+  }
+
+  // A type is an ordinary note, so the next index rebuild picks it up with no
+  // extra registration. `_order` puts new types after the existing ones.
+  const wsPath = WsPath.fromParts(wsName, `${slug}.md`).wsPath;
+  const body = [
+    '---',
+    'type: Type',
+    `_sidebar_label: ${trimmed}`,
+    `_order: ${existing.length}`,
+    '---',
+    '',
+    `# ${trimmed}`,
+    '',
+  ].join('\n');
+
+  await fileSystem.createTextFile(wsPath, body);
+  navigation.goWsPath(wsPath);
+}
+
+async function createViewFile({
+  name,
+  wsName,
+  existing,
+  fileSystem,
+  navigation,
+}: {
+  name: string;
+  wsName: string | undefined;
+  existing: readonly { id: string }[];
+  fileSystem: {
+    createTextFile: (wsPath: string, text: string) => Promise<void>;
+  };
+  navigation: { goWsPath: (wsPath: string) => void };
+}): Promise<void> {
+  const trimmed = name.trim();
+  const slug = toSlug(trimmed);
+  if (!wsName || !trimmed || !slug) {
+    return;
+  }
+
+  if (existing.some((view) => view.id === slug)) {
+    toast.error(t.app.errors.workspace.viewAlreadyExists({ name: trimmed }));
+    return;
+  }
+
+  // Seeded with a filter that matches everything, so a new view lists the
+  // whole workspace and can be narrowed by editing it, rather than appearing
+  // broken because it matches nothing.
+  const wsPath = WsPath.fromParts(
+    wsName,
+    `${VIEWS_DIRECTORY}/${slug}.yml`,
+  ).wsPath;
+  const body = [
+    `name: ${trimmed}`,
+    'icon: null',
+    'color: null',
+    `order: ${existing.length}`,
+    'sort: null',
+    'filters:',
+    '  all:',
+    '  - field: title',
+    '    op: is_not_empty',
+    '',
+  ].join('\n');
+
+  await fileSystem.createTextFile(wsPath, body);
+  navigation.goWsPath(wsPath);
+}

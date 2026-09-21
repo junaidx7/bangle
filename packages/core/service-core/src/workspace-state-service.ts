@@ -8,12 +8,19 @@ import {
   isAppError,
 } from '@bangle.io/base-utils';
 import { SERVICE_NAME } from '@bangle.io/constants';
-import type { Frontmatter, TypeDefinition } from '@bangle.io/note-meta';
+import type {
+  Frontmatter,
+  TypeDefinition,
+  ViewDefinition,
+} from '@bangle.io/note-meta';
 import {
   compareTypes,
+  compareViews,
+  evaluateFilter,
   extractTitle,
   parseFrontmatter,
   parseTypeDocument,
+  parseViewDefinition,
   readNoteType,
 } from '@bangle.io/note-meta';
 import type { FileStat, WorkspaceInfo } from '@bangle.io/types';
@@ -158,8 +165,13 @@ export interface NoteMetaIndexState {
   byWsPath: ReadonlyMap<string, NoteMeta>;
   /** Every type document found, including ones with no notes yet. */
   types: readonly TypeDefinition[];
+  /** Saved views parsed from `views/*.yml`. */
+  views: readonly ViewDefinition[];
   error?: unknown;
 }
+
+/** Where saved views live, matching Tolaria's convention. */
+export const VIEWS_DIRECTORY = 'views';
 
 const EMPTY_NOTE_META: ReadonlyMap<string, NoteMeta> = new Map();
 
@@ -167,6 +179,7 @@ const EMPTY_NOTE_META_INDEX_STATE: NoteMetaIndexState = {
   status: 'ready',
   byWsPath: EMPTY_NOTE_META,
   types: [],
+  views: [],
 };
 
 /**
@@ -228,6 +241,8 @@ export class WorkspaceStateService extends BaseService {
     async (get, { signal }) => {
       const wsName = get(this.$currentWsName);
       const wsPaths = get(this.$noteWsPaths);
+      // View files are not notes, so they come from the unfiltered list.
+      const allPaths = get(this.$wsPaths);
       // Re-index when any note's content changes, the same trigger the
       // backlink index uses.
       get(this.fileSystem.$fileContentUpdateCount);
@@ -239,7 +254,12 @@ export class WorkspaceStateService extends BaseService {
       await waitForBacklinkRebuildWindow(signal);
 
       try {
-        return await this.buildNoteMetaIndex({ signal, wsName, wsPaths });
+        return await this.buildNoteMetaIndex({
+          signal,
+          wsName,
+          wsPaths,
+          allPaths,
+        });
       } catch (error: unknown) {
         if (signal.aborted) {
           throw error;
@@ -249,6 +269,7 @@ export class WorkspaceStateService extends BaseService {
           status: 'error' as const,
           byWsPath: EMPTY_NOTE_META,
           types: [],
+          views: [],
           error,
         };
       }
@@ -262,6 +283,7 @@ export class WorkspaceStateService extends BaseService {
         status: 'loading',
         byWsPath: EMPTY_NOTE_META,
         types: [],
+        views: [],
       },
   );
 
@@ -297,6 +319,38 @@ export class WorkspaceStateService extends BaseService {
       notes.sort((a, b) => a.title.localeCompare(b.title));
     }
     return grouped;
+  });
+
+  $noteViews = atom<readonly ViewDefinition[]>(
+    (get) => get(this.$noteMetaIndex).views,
+  );
+
+  /**
+   * Notes matching each saved view, keyed by view id.
+   *
+   * Type documents are excluded for the same reason they are excluded from
+   * type groups: they configure the vault rather than being content in it,
+   * and a view like "everything untagged" would otherwise be full of them.
+   */
+  $notesByView = atom<ReadonlyMap<string, readonly NoteMeta[]>>((get) => {
+    const index = get(this.$noteMetaIndex);
+    const typeDocPaths = new Set(index.types.map((type) => type.wsPath));
+    const candidates = [...index.byWsPath.values()].filter(
+      (meta) => !typeDocPaths.has(meta.wsPath),
+    );
+
+    const byView = new Map<string, readonly NoteMeta[]>();
+    for (const view of index.views) {
+      const matched = candidates.filter((meta) =>
+        evaluateFilter(
+          { title: meta.title, type: meta.type, frontmatter: meta.frontmatter },
+          view.filters,
+        ),
+      );
+      matched.sort((a, b) => a.title.localeCompare(b.title));
+      byView.set(view.id, matched);
+    }
+    return byView;
   });
 
   private $backlinkIndexAsync = atom<Promise<BacklinkIndexState>>(
@@ -821,10 +875,12 @@ export class WorkspaceStateService extends BaseService {
     signal,
     wsName,
     wsPaths,
+    allPaths,
   }: {
     signal: AbortSignal;
     wsName: string;
     wsPaths: readonly WsFilePath[];
+    allPaths: readonly WsFilePath[];
   }): Promise<NoteMetaIndexState> {
     throwIfAborted(signal);
     const notePaths = wsPaths.filter(
@@ -869,7 +925,46 @@ export class WorkspaceStateService extends BaseService {
 
     throwIfAborted(signal);
     types.sort(compareTypes);
-    return { status: 'ready', byWsPath, types };
+
+    const views = await this.readSavedViews({ signal, wsName, allPaths });
+    return { status: 'ready', byWsPath, types, views };
+  }
+
+  private async readSavedViews({
+    signal,
+    wsName,
+    allPaths,
+  }: {
+    signal: AbortSignal;
+    wsName: string;
+    allPaths: readonly WsFilePath[];
+  }): Promise<ViewDefinition[]> {
+    const viewPaths = allPaths.filter(
+      (path) =>
+        path.wsName === wsName &&
+        path.path.startsWith(`${VIEWS_DIRECTORY}/`) &&
+        /\.ya?ml$/i.test(path.path),
+    );
+
+    const views: ViewDefinition[] = [];
+    for (const viewPath of viewPaths) {
+      throwIfAborted(signal);
+      const yaml = await this.fileSystem.readFileAsText(viewPath.wsPath, {
+        signal,
+      });
+      if (yaml === undefined) {
+        continue;
+      }
+      // The filename is the stable view id, as Tolaria defines it.
+      const id = viewPath.fileName.replace(/\.ya?ml$/i, '');
+      const view = parseViewDefinition({ id, yaml });
+      if (view) {
+        views.push(view);
+      }
+    }
+
+    views.sort(compareViews);
+    return views;
   }
 
   private async buildBacklinkIndex({

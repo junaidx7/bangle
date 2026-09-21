@@ -99,6 +99,13 @@ function determineOmniSearchRoute(input: string, currentRoute: Route): Route {
  * Manages UI state such as theme preferences, dialogs, and omni-search state
  */
 
+export interface SelectedCollection {
+  kind: 'type' | 'view' | 'untyped';
+  /** Type name, view id, or the untyped sentinel. */
+  key: string;
+  label: string;
+}
+
 export type WorkspaceSyncStatus =
   | { type: 'idle' }
   | { type: 'syncing'; wsName: string }
@@ -133,6 +140,15 @@ export class WorkbenchStateService extends BaseService {
    * without every caller having to thread state through.
    */
   $syncStatus = atom<WorkspaceSyncStatus>({ type: 'idle' });
+
+  /**
+   * Which sidebar collection the workspace listing is scoped to.
+   *
+   * Lives here rather than in the URL because it is a filter over the current
+   * workspace view, not a destination: reloading should land you on the
+   * workspace, not inside a filter you have to escape from.
+   */
+  $selectedCollection = atom<SelectedCollection | undefined>(undefined);
 
   $openWsDialog = atom(false);
   $openOmniSearch = atom(false);

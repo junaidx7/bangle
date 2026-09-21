@@ -473,6 +473,22 @@ export const t = {
           `Bangle.io needs your permission to access "${wsName}"`,
         continueTextInitial: 'Grant',
       },
+      createType: {
+        title: 'New type',
+        description:
+          'A type groups notes and suggests properties for new ones. It is stored as an ordinary note.',
+        inputLabel: 'Type name',
+        placeholder: 'Library',
+        submitText: 'Create type',
+      },
+      createView: {
+        title: 'New view',
+        description:
+          'A view is a saved filter over your notes, stored as a file in views/.',
+        inputLabel: 'View name',
+        placeholder: 'Active Projects',
+        submitText: 'Create view',
+      },
       createWorkspace: {
         invalidName: 'Invalid workspace name',
         browserTitle: 'Browser',
@@ -598,6 +614,10 @@ export const t = {
     errors: {
       workspace: {
         notOpened: 'No workspace open',
+        typeAlreadyExists: ({ name }: { name: string }) =>
+          `A type called "${name}" already exists.`,
+        viewAlreadyExists: ({ name }: { name: string }) =>
+          `A view called "${name}" already exists.`,
         noNoteOpenCannotToggleWideEditor:
           'No note is currently open, cannot toggle wide editor.',
         noNotesToDelete: 'No notes provided or available to delete',
@@ -804,6 +824,7 @@ export const t = {
       switchWorkspaceButton: 'Switch Workspace',
     },
     pageWsHome: {
+      clearCollectionButton: 'Clear filter',
       noNotesMessage: 'No notes found in this workspace.',
       newNoteButton: 'New Note',
       switchWorkspaceButton: 'Switch Workspace',
@@ -842,6 +863,12 @@ export const t = {
       appSidebar: {
         openedLabel: 'Opened',
         untypedLabel: 'Untyped',
+        viewsLabel: 'Views',
+        typesLabel: 'Types',
+        addViewLabel: 'New view',
+        addTypeLabel: 'New type',
+        noViewsLabel: 'No saved views yet.',
+        noTypesLabel: 'No types yet.',
         starredLabel: 'Starred',
         filesLabel: 'Files',
         fileTreeLabel: 'Workspace files',

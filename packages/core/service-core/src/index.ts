@@ -26,7 +26,10 @@ export {
 export type { ShortcutServiceConfig } from './shortcut-service';
 export { ShortcutService } from './shortcut-service';
 export { UserActivityService } from './user-activity-service';
-export type { WorkspaceSyncStatus } from './workbench-state-service';
+export type {
+  SelectedCollection,
+  WorkspaceSyncStatus,
+} from './workbench-state-service';
 export { WorkbenchStateService } from './workbench-state-service';
 export type {
   AssetDestinationInput,
@@ -51,5 +54,6 @@ export type {
 } from './workspace-state-service';
 export {
   UNTYPED_NOTES_KEY,
+  VIEWS_DIRECTORY,
   WorkspaceStateService,
 } from './workspace-state-service';

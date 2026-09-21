@@ -99,8 +99,9 @@ export { AppAlertDialog } from './app-alert-dialog';
 export type {
   AppSidebarProps,
   NavItem,
+  SidebarCollection,
+  SidebarCollectionItem,
   SidebarSyncAction,
-  SidebarTypeGroup,
 } from './app-sidebar';
 export { AppSidebar } from './app-sidebar';
 export { default as bangleTransparentIconUrl } from './bangle-transparent_x512.png';

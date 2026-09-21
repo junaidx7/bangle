@@ -22,6 +22,7 @@ import {
   ExternalLink,
   Files,
   FileText,
+  Filter,
   GalleryVerticalEnd,
   Layers,
   Lightbulb,
@@ -77,15 +78,34 @@ export type NavItem = {
  * has never heard of, so resolving happens here and unknown names degrade to
  * a default rather than breaking the sidebar.
  */
-export type SidebarTypeGroup = {
+/**
+ * One row under a VIEWS or TYPES heading: an icon, a label, and how many
+ * notes it holds. Selecting it lists those notes in the main pane rather
+ * than nesting them in the sidebar, so a vault with many types stays
+ * navigable.
+ *
+ * `icon` and `color` arrive as the strings the vault declared, not as
+ * components: the vault is the source of truth and may name an icon this app
+ * has never heard of, so resolving happens here and unknown names degrade to
+ * a default rather than breaking the sidebar.
+ */
+export type SidebarCollectionItem = {
   key: string;
   label: string;
   icon?: string | undefined;
   color?: string | undefined;
   count: number;
-  items: NavItem[];
-  /** Opens the type's own document, absent for the untyped bucket. */
-  typeWsPath?: string | undefined;
+  isActive?: boolean;
+  onSelect: () => void;
+};
+
+export type SidebarCollection = {
+  label: string;
+  items: SidebarCollectionItem[];
+  /** Shown as a `+` in the heading; omitted when adding is not offered. */
+  onAdd?: (() => void) | undefined;
+  addLabel?: string | undefined;
+  emptyLabel?: string | undefined;
 };
 
 type Workspace = {
@@ -117,8 +137,10 @@ export type AppSidebarProps = {
   filePaths: string[];
   navItems: NavItem[];
   starredItems?: NavItem[];
+  /** Saved views, already ordered for display. */
+  viewCollection?: SidebarCollection | undefined;
   /** Note types discovered in the workspace, already ordered for display. */
-  typeGroups?: SidebarTypeGroup[];
+  typeCollection?: SidebarCollection | undefined;
   onSearchClick?: () => void;
   activeFilePaths?: string[];
   getActionsForEntry: (
@@ -272,7 +294,8 @@ export function AppSidebar({
   filePaths,
   navItems,
   starredItems = [],
-  typeGroups = [],
+  viewCollection,
+  typeCollection,
   onSearchClick = () => {},
   syncAction,
   activeFilePaths = [],
@@ -327,13 +350,8 @@ export function AppSidebar({
           icon={Star}
           scrollable
         />
-        {typeGroups.map((group) => (
-          <SidebarTypeSection
-            key={group.key}
-            group={group}
-            wsPathToHref={wsPathToHref}
-          />
-        ))}
+        {viewCollection && <SidebarCollectionGroup {...viewCollection} />}
+        {typeCollection && <SidebarCollectionGroup {...typeCollection} />}
         <SidebarGroup className="min-h-0 flex-1 overflow-hidden p-0 pt-0">
           <SidebarGroupLabel className="sr-only">
             {t.app.components.appSidebar.filesLabel}
@@ -725,17 +743,109 @@ function SidebarSyncButton({ status, detail, onSync }: SidebarSyncAction) {
   );
 }
 
+function SidebarCollectionGroup({
+  label,
+  items,
+  onAdd,
+  addLabel,
+  emptyLabel,
+}: SidebarCollection) {
+  const { isMobile, setOpenMobile } = useSidebar();
+  const [open, setOpen] = React.useState(true);
+
+  if (items.length === 0 && !onAdd) {
+    return null;
+  }
+
+  return (
+    <SidebarGroup className="py-0.5">
+      <Collapsible open={open} onOpenChange={setOpen}>
+        <div className="flex items-center gap-1 pr-1">
+          <CollapsibleTrigger
+            className={cn(
+              buttonVariants({ variant: 'ghost' }),
+              'h-6 min-w-0 flex-1 justify-start gap-1 px-1 text-[11px] uppercase tracking-wide',
+            )}
+          >
+            {open ? (
+              <ChevronDown className="size-3 shrink-0 opacity-50" />
+            ) : (
+              <ChevronRight className="size-3 shrink-0 opacity-50" />
+            )}
+            <span className="truncate font-medium opacity-60">{label}</span>
+          </CollapsibleTrigger>
+          {onAdd && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-6 shrink-0 opacity-60 hover:opacity-100"
+              title={addLabel}
+              aria-label={addLabel}
+              onClick={() => onAdd()}
+            >
+              <Plus className="size-3.5" />
+            </Button>
+          )}
+        </div>
+        <CollapsibleContent>
+          {items.length === 0 ? (
+            emptyLabel ? (
+              <p className="px-2 py-1 text-[11px] text-foreground/40">
+                {emptyLabel}
+              </p>
+            ) : null
+          ) : (
+            <SidebarMenu className="gap-0.5">
+              {items.map((item) => {
+                const Icon = resolveCollectionIcon(item.icon);
+                const colorClass = item.color
+                  ? (TYPE_COLORS[item.color.toLowerCase()] ?? '')
+                  : '';
+                return (
+                  <SidebarMenuItem key={item.key} className="min-w-0">
+                    <SidebarMenuButton
+                      isActive={item.isActive}
+                      className="h-7"
+                      onClick={() => {
+                        item.onSelect();
+                        if (isMobile) {
+                          setOpenMobile(false);
+                        }
+                      }}
+                    >
+                      <Icon className={cn('size-3.5 shrink-0', colorClass)} />
+                      <span className="min-w-0 flex-1 truncate font-medium">
+                        {item.label}
+                      </span>
+                      {item.count > 0 && (
+                        <span className="shrink-0 rounded-full bg-muted px-1.5 text-[10px] tabular-nums opacity-70">
+                          {item.count}
+                        </span>
+                      )}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          )}
+        </CollapsibleContent>
+      </Collapsible>
+    </SidebarGroup>
+  );
+}
+
 /**
  * Icon names come from the vault, written for whichever app created it —
- * Tolaria's documents use Phosphor names like `file-text` and `hands-praying`
- * while this app ships Lucide. Rather than demand the vault change, map the
- * names actually seen in the wild and fall back to a neutral icon, so an
+ * Tolaria's files use Phosphor names like `stack` and `hands-praying` while
+ * this app ships Lucide. Rather than demand the vault change, map the names
+ * actually seen in the wild and fall back to a neutral icon, so an
  * unrecognized name costs an icon and never a broken sidebar.
  */
-const TYPE_ICONS: Record<string, React.ElementType> = {
+const COLLECTION_ICONS: Record<string, React.ElementType> = {
   'book-open-text': BookOpenText,
   'file-text': FileText,
   files: Files,
+  funnel: Filter,
   'hands-praying': Sparkles,
   lightbulb: Lightbulb,
   list: List,
@@ -744,19 +854,19 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   sparkle: Sparkles,
   stack: Layers,
   tag: Tag,
+  user: Sparkles,
 };
 
-function resolveTypeIcon(name: string | undefined): React.ElementType {
+function resolveCollectionIcon(name: string | undefined): React.ElementType {
   if (!name) {
-    return Tag;
+    return Filter;
   }
-  return TYPE_ICONS[name.toLowerCase()] ?? Tag;
+  return COLLECTION_ICONS[name.toLowerCase()] ?? Filter;
 }
 
 /**
- * Tailwind cannot see class names built at runtime, so the colours a type
- * document may name are listed literally here. Anything else inherits the
- * default foreground.
+ * Tailwind cannot see class names built at runtime, so the colours a vault
+ * may name are listed literally here. Anything else inherits the default.
  */
 const TYPE_COLORS: Record<string, string> = {
   blue: 'text-blue-500',
@@ -768,77 +878,3 @@ const TYPE_COLORS: Record<string, string> = {
   red: 'text-red-500',
   yellow: 'text-yellow-500',
 };
-
-function SidebarTypeSection({
-  group,
-  wsPathToHref,
-}: {
-  group: SidebarTypeGroup;
-  wsPathToHref?: (wsPath: string) => string;
-}) {
-  const { isMobile, setOpenMobile } = useSidebar();
-  // Collapsed by default: a vault can define many types, and an expanded wall
-  // of every note defeats the grouping.
-  const [open, setOpen] = React.useState(false);
-  const Icon = resolveTypeIcon(group.icon);
-  const colorClass = group.color
-    ? (TYPE_COLORS[group.color.toLowerCase()] ?? '')
-    : '';
-
-  if (group.count === 0) {
-    return null;
-  }
-
-  return (
-    <SidebarGroup className="py-0.5">
-      <Collapsible open={open} onOpenChange={setOpen}>
-        <CollapsibleTrigger
-          className={cn(
-            buttonVariants({ variant: 'ghost' }),
-            'h-7 w-full justify-start gap-2 px-2 text-xs',
-          )}
-        >
-          {open ? (
-            <ChevronDown className="size-3.5 shrink-0 opacity-60" />
-          ) : (
-            <ChevronRight className="size-3.5 shrink-0 opacity-60" />
-          )}
-          <Icon className={cn('size-3.5 shrink-0', colorClass)} />
-          <span className="min-w-0 flex-1 truncate text-left font-medium">
-            {group.label}
-          </span>
-          <span className="shrink-0 tabular-nums opacity-50">
-            {group.count}
-          </span>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
-          <SidebarMenu className="mt-0.5 max-h-[min(14rem,30vh)] gap-0.5 overflow-y-auto pr-1">
-            {group.items.map((item) => (
-              <SidebarMenuItem key={item.wsPath} className="min-w-0">
-                <SidebarMenuButton
-                  isActive={item.isActive}
-                  className="h-7"
-                  render={
-                    <a
-                      href={wsPathToHref ? wsPathToHref(item.wsPath) : '#dead'}
-                      title={item.title}
-                      aria-current={item.isActive ? 'page' : undefined}
-                      className="min-w-0 pl-6 font-normal"
-                      onClick={() => {
-                        if (isMobile) {
-                          setOpenMobile(false);
-                        }
-                      }}
-                    />
-                  }
-                >
-                  <span className="min-w-0 truncate">{item.title}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </CollapsibleContent>
-      </Collapsible>
-    </SidebarGroup>
-  );
-}

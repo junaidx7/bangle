@@ -126,6 +126,38 @@ export const uiCommands = narrow([
 
   // GROUP: NOTES MANAGEMENT
   {
+    id: 'command::ui:create-type-dialog',
+    title: 'New Type',
+    keywords: ['new', 'create', 'type', 'category'],
+    dependencies: {
+      services: [
+        'workbenchState',
+        'workspaceState',
+        'fileSystem',
+        'navigation',
+      ],
+    },
+    omniSearch: 'workspace',
+    autoFocusEditor: false,
+    args: null,
+  },
+  {
+    id: 'command::ui:create-view-dialog',
+    title: 'New View',
+    keywords: ['new', 'create', 'view', 'filter', 'saved'],
+    dependencies: {
+      services: [
+        'workbenchState',
+        'workspaceState',
+        'fileSystem',
+        'navigation',
+      ],
+    },
+    omniSearch: 'workspace',
+    autoFocusEditor: false,
+    args: null,
+  },
+  {
     id: 'command::ui:create-note-dialog',
     title: 'New Note',
     keywords: ['new', 'create', 'note'],
