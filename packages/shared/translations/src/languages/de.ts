@@ -451,6 +451,8 @@ export const t = {
         githubConnectButton: 'Verbinden',
         githubVerifying: 'Zugriff wird gepruft...',
         githubInvalidRepo: 'Gib ein Repository als besitzer/repository an',
+        githubRepoNeedsOwner: ({ name }: { name: string }) =>
+          `Gib auch den Besitzer an, zum Beispiel besitzer/${name}`,
         githubMissingToken: 'Gib ein Zugriffstoken ein',
         githubBranchMissing: ({ branch }: { branch: string }) =>
           `Der Branch "${branch}" existiert in diesem Repository nicht.`,

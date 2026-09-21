@@ -524,6 +524,8 @@ export const t = {
         githubConnectButton: 'Connect',
         githubVerifying: 'Checking access...',
         githubInvalidRepo: 'Enter a repository as owner/repository',
+        githubRepoNeedsOwner: ({ name }: { name: string }) =>
+          `Include the owner as well, for example owner/${name}`,
         githubMissingToken: 'Enter an access token',
         githubBranchMissing: ({ branch }: { branch: string }) =>
           `The branch "${branch}" does not exist in this repository.`,

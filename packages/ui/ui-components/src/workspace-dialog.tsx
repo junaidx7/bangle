@@ -690,6 +690,7 @@ const StageConnectGithub: React.FC<StageConnectGithubProps> = ({
   const repoId = useId();
   const branchId = useId();
   const tokenId = useId();
+  const repoHintId = useId();
   const repoRef = useRef<HTMLInputElement>(null);
   const submitWorkspace = useWorkspaceSubmit(dispatch, onDone);
 
@@ -709,7 +710,21 @@ const StageConnectGithub: React.FC<StageConnectGithubProps> = ({
 
   const parsed = parseOwnerRepo(repo);
   const busy = isSubmitting || isVerifying;
-  const canSubmit = Boolean(parsed && token.trim() && branch.trim() && !busy);
+  // Enabled as soon as the fields are filled, even when the repository does not
+  // parse yet. Gating the button on `parsed` made the "owner/repository" error
+  // unreachable: you could not submit to trigger the message explaining why you
+  // could not submit. Let the click through and answer it properly.
+  const canSubmit = Boolean(
+    repo.trim() && token.trim() && branch.trim() && !busy,
+  );
+  // Surfaced live under the field, so the most common mistake — typing just the
+  // repository name — is corrected before anyone reaches for the button.
+  const repoHint =
+    repo.trim() && !parsed
+      ? t.app.dialogs.createWorkspace.githubRepoNeedsOwner({
+          name: repo.trim().replace(/^\/+|\/+$/g, '') || 'repository',
+        })
+      : undefined;
 
   const fail = (message: string) => {
     dispatch({ type: 'VERIFY_FAILED', error: { message } });
@@ -791,7 +806,14 @@ const StageConnectGithub: React.FC<StageConnectGithubProps> = ({
             disabled={busy}
             autoComplete="off"
             spellCheck={false}
+            aria-invalid={repoHint ? true : undefined}
+            aria-describedby={repoHint ? repoHintId : undefined}
           />
+          {repoHint && (
+            <p id={repoHintId} className="text-[11px] text-destructive">
+              {repoHint}
+            </p>
+          )}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
