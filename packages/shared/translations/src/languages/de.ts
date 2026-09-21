@@ -732,6 +732,7 @@ export const t = {
     components: {
       appSidebar: {
         openedLabel: 'Geöffnet',
+        untypedLabel: 'Ohne Typ',
         filesLabel: 'Dateien',
         fileTreeLabel: 'Arbeitsbereichsdateien',
         noteCount: ({ count }: { count: number }) =>

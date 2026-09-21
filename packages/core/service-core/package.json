@@ -35,6 +35,7 @@
     "@bangle.io/constants": "workspace:*",
     "@bangle.io/markdown-syntax": "workspace:*",
     "@bangle.io/mini-js-utils": "workspace:*",
+    "@bangle.io/note-meta": "workspace:*",
     "@bangle.io/types": "workspace:*",
     "@bangle.io/ui-components": "workspace:*",
     "@bangle.io/ws-path": "workspace:*",

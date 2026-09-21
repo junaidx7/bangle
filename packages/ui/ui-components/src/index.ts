@@ -100,6 +100,7 @@ export type {
   AppSidebarProps,
   NavItem,
   SidebarSyncAction,
+  SidebarTypeGroup,
 } from './app-sidebar';
 export { AppSidebar } from './app-sidebar';
 export { default as bangleTransparentIconUrl } from './bangle-transparent_x512.png';

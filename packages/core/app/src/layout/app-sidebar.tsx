@@ -1,7 +1,11 @@
 import { WORKSPACE_STORAGE_TYPE } from '@bangle.io/constants';
 import { useCoreServices } from '@bangle.io/context';
-import type { WorkspaceSyncStatus } from '@bangle.io/service-core';
-import type { SidebarSyncAction } from '@bangle.io/ui-components';
+import type { NoteMeta, WorkspaceSyncStatus } from '@bangle.io/service-core';
+import { UNTYPED_NOTES_KEY } from '@bangle.io/service-core';
+import type {
+  SidebarSyncAction,
+  SidebarTypeGroup,
+} from '@bangle.io/ui-components';
 import { Sidebar, AppSidebar as UIAppSidebar } from '@bangle.io/ui-components';
 import { WsDirPath, WsPath } from '@bangle.io/ws-path';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
@@ -39,6 +43,8 @@ export const AppSidebar = ({ children }: SidebarProps) => {
   const starredWsPaths = useAtomValue(userActivityService.$starredWsPaths);
   const fileTreeListState = useAtomValue(workspaceState.$fileTreeListState);
   const syncStatus = useAtomValue(workbenchState.$syncStatus);
+  const noteTypes = useAtomValue(workspaceState.$noteTypes);
+  const notesByType = useAtomValue(workspaceState.$notesByType);
 
   // Keep this domain-to-view join local until another consumer needs it.
   const starredItems = React.useMemo(() => {
@@ -73,6 +79,46 @@ export const AppSidebar = ({ children }: SidebarProps) => {
       );
     },
   });
+
+  const typeGroups = React.useMemo<SidebarTypeGroup[]>(() => {
+    const activePathSet = new Set(activeWsPaths.map((wsPath) => wsPath.wsPath));
+    const toItems = (notes: readonly NoteMeta[]) =>
+      notes.map((note) => ({
+        title: note.title,
+        wsPath: note.wsPath,
+        isActive: activePathSet.has(note.wsPath),
+      }));
+
+    const groups: SidebarTypeGroup[] = noteTypes.map((type) => {
+      const notes = notesByType.get(type.name) ?? [];
+      return {
+        key: type.name,
+        label: type.label,
+        icon: type.icon,
+        color: type.color,
+        count: notes.length,
+        items: toItems(notes),
+        typeWsPath: type.wsPath,
+      };
+    });
+
+    // Untyped notes go last but must be present: most notes in a real vault
+    // carry no type, and grouping that hid them would hide the workspace.
+    const untyped = notesByType.get(UNTYPED_NOTES_KEY) ?? [];
+    if (untyped.length > 0) {
+      groups.push({
+        key: UNTYPED_NOTES_KEY,
+        label: t.app.components.appSidebar.untypedLabel,
+        icon: undefined,
+        color: undefined,
+        count: untyped.length,
+        items: toItems(untyped),
+        typeWsPath: undefined,
+      });
+    }
+
+    return groups;
+  }, [noteTypes, notesByType, activeWsPaths]);
 
   const getActionsForEntry = useSidebarFileActions({
     activeWsName,
@@ -166,6 +212,7 @@ export const AppSidebar = ({ children }: SidebarProps) => {
         }
         canCreateFiles={Boolean(activeWsName)}
         syncAction={syncAction}
+        typeGroups={typeGroups}
         onCreateDirectory={(pathPrefix) => {
           if (!activeWsName) {
             return;

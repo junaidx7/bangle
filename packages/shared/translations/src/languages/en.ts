@@ -841,6 +841,7 @@ export const t = {
     components: {
       appSidebar: {
         openedLabel: 'Opened',
+        untypedLabel: 'Untyped',
         starredLabel: 'Starred',
         filesLabel: 'Files',
         fileTreeLabel: 'Workspace files',

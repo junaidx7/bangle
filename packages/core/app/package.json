@@ -38,6 +38,7 @@
     "@bangle.io/github-api": "workspace:*",
     "@bangle.io/logger": "workspace:*",
     "@bangle.io/native-fs": "workspace:*",
+    "@bangle.io/note-meta": "workspace:*",
     "@bangle.io/omni-search": "workspace:*",
     "@bangle.io/service-core": "workspace:*",
     "@bangle.io/types": "workspace:*",

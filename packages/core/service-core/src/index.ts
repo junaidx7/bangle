@@ -44,5 +44,12 @@ export {
   writeAssetFile,
 } from './workspace-asset-storage';
 export { WorkspaceOpsService } from './workspace-ops-service';
-export type { BacklinkIndexState } from './workspace-state-service';
-export { WorkspaceStateService } from './workspace-state-service';
+export type {
+  BacklinkIndexState,
+  NoteMeta,
+  NoteMetaIndexState,
+} from './workspace-state-service';
+export {
+  UNTYPED_NOTES_KEY,
+  WorkspaceStateService,
+} from './workspace-state-service';

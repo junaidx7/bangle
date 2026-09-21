@@ -8,6 +8,14 @@ import {
   isAppError,
 } from '@bangle.io/base-utils';
 import { SERVICE_NAME } from '@bangle.io/constants';
+import type { Frontmatter, TypeDefinition } from '@bangle.io/note-meta';
+import {
+  compareTypes,
+  extractTitle,
+  parseFrontmatter,
+  parseTypeDocument,
+  readNoteType,
+} from '@bangle.io/note-meta';
 import type { FileStat, WorkspaceInfo } from '@bangle.io/types';
 import {
   createWikiLinkIndex,
@@ -132,6 +140,44 @@ function relocateSortedUniqueWsPath(
 /**
  * Manages the state of current and available workspaces
  */
+
+/** One note's indexed metadata: enough to list, group, and filter it. */
+export interface NoteMeta {
+  wsPath: string;
+  /** First H1, falling back to the file name so slugs never surface raw. */
+  title: string;
+  /** Declared `type:`, or undefined for an untyped note or a type document. */
+  type: string | undefined;
+  frontmatter: Frontmatter;
+  /** Frontmatter was present but its YAML did not parse. */
+  malformed: boolean;
+}
+
+export interface NoteMetaIndexState {
+  status: 'loading' | 'ready' | 'error';
+  byWsPath: ReadonlyMap<string, NoteMeta>;
+  /** Every type document found, including ones with no notes yet. */
+  types: readonly TypeDefinition[];
+  error?: unknown;
+}
+
+const EMPTY_NOTE_META: ReadonlyMap<string, NoteMeta> = new Map();
+
+const EMPTY_NOTE_META_INDEX_STATE: NoteMetaIndexState = {
+  status: 'ready',
+  byWsPath: EMPTY_NOTE_META,
+  types: [],
+};
+
+/**
+ * Bucket for notes that declare no type.
+ *
+ * Not a nicety: in a real vault most notes are untyped — a 73-note Tolaria
+ * vault had 33 of them — so a sidebar built only from type sections would
+ * hide half the workspace.
+ */
+export const UNTYPED_NOTES_KEY = '\u0000untyped';
+
 export class WorkspaceStateService extends BaseService {
   static deps = ['navigation', 'fileSystem', 'workspaceOps'] as const;
 
@@ -176,6 +222,81 @@ export class WorkspaceStateService extends BaseService {
     return wsName
       ? createWikiLinkIndex(get(this.$noteWsPaths), wsName)
       : undefined;
+  });
+
+  private $noteMetaIndexAsync = atom<Promise<NoteMetaIndexState>>(
+    async (get, { signal }) => {
+      const wsName = get(this.$currentWsName);
+      const wsPaths = get(this.$noteWsPaths);
+      // Re-index when any note's content changes, the same trigger the
+      // backlink index uses.
+      get(this.fileSystem.$fileContentUpdateCount);
+
+      if (!wsName) {
+        return EMPTY_NOTE_META_INDEX_STATE;
+      }
+
+      await waitForBacklinkRebuildWindow(signal);
+
+      try {
+        return await this.buildNoteMetaIndex({ signal, wsName, wsPaths });
+      } catch (error: unknown) {
+        if (signal.aborted) {
+          throw error;
+        }
+        this.logger.error('Failed to build note metadata index', error);
+        return {
+          status: 'error' as const,
+          byWsPath: EMPTY_NOTE_META,
+          types: [],
+          error,
+        };
+      }
+    },
+  );
+
+  $noteMetaIndex: Atom<NoteMetaIndexState> = unwrap(
+    this.$noteMetaIndexAsync,
+    (previous) =>
+      previous ?? {
+        status: 'loading',
+        byWsPath: EMPTY_NOTE_META,
+        types: [],
+      },
+  );
+
+  /** Type documents worth showing, ordered by `_order` then label. */
+  $noteTypes = atom<readonly TypeDefinition[]>((get) =>
+    get(this.$noteMetaIndex).types.filter((type) => type.visible),
+  );
+
+  /**
+   * Notes grouped by type name, with untyped notes under
+   * {@link UNTYPED_NOTES_KEY}. Type documents are excluded: they describe the
+   * vault rather than being content in it.
+   */
+  $notesByType = atom<ReadonlyMap<string, readonly NoteMeta[]>>((get) => {
+    const index = get(this.$noteMetaIndex);
+    const typeDocPaths = new Set(index.types.map((type) => type.wsPath));
+    const grouped = new Map<string, NoteMeta[]>();
+
+    for (const meta of index.byWsPath.values()) {
+      if (typeDocPaths.has(meta.wsPath)) {
+        continue;
+      }
+      const key = meta.type ?? UNTYPED_NOTES_KEY;
+      const bucket = grouped.get(key);
+      if (bucket) {
+        bucket.push(meta);
+      } else {
+        grouped.set(key, [meta]);
+      }
+    }
+
+    for (const notes of grouped.values()) {
+      notes.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    return grouped;
   });
 
   private $backlinkIndexAsync = atom<Promise<BacklinkIndexState>>(
@@ -694,6 +815,61 @@ export class WorkspaceStateService extends BaseService {
   hasWorkspace(wsName: string) {
     const workspaces = this.store.get(this.$workspaces);
     return workspaces.some((ws) => ws.name === wsName);
+  }
+
+  private async buildNoteMetaIndex({
+    signal,
+    wsName,
+    wsPaths,
+  }: {
+    signal: AbortSignal;
+    wsName: string;
+    wsPaths: readonly WsFilePath[];
+  }): Promise<NoteMetaIndexState> {
+    throwIfAborted(signal);
+    const notePaths = wsPaths.filter(
+      (path) => path.wsName === wsName && path.isMarkdown(),
+    );
+
+    const byWsPath = new Map<string, NoteMeta>();
+    const types: TypeDefinition[] = [];
+
+    for (const notePath of notePaths) {
+      throwIfAborted(signal);
+      const markdown = await this.fileSystem.readFileAsText(notePath.wsPath, {
+        signal,
+      });
+      if (markdown === undefined) {
+        // Deleted between listing and reading; the next rebuild settles it.
+        continue;
+      }
+
+      const { frontmatter, body, malformed } = parseFrontmatter(markdown);
+      // Real vaults have notes with no H1 at all — CLAUDE.md, resume.md — so
+      // the file name is the fallback rather than an empty row.
+      const title = extractTitle(body, notePath.fileName) ?? notePath.fileName;
+
+      byWsPath.set(notePath.wsPath, {
+        wsPath: notePath.wsPath,
+        title,
+        type: readNoteType(frontmatter),
+        frontmatter,
+        malformed,
+      });
+
+      const typeDefinition = parseTypeDocument({
+        wsPath: notePath.wsPath,
+        title,
+        frontmatter,
+      });
+      if (typeDefinition) {
+        types.push(typeDefinition);
+      }
+    }
+
+    throwIfAborted(signal);
+    types.sort(compareTypes);
+    return { status: 'ready', byWsPath, types };
   }
 
   private async buildBacklinkIndex({
