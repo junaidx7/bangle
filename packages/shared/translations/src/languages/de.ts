@@ -470,7 +470,7 @@ export const t = {
           owner: string;
           repo: string;
         }) =>
-          `Das Token funktioniert — es gehort zu @${login} — kann aber ${owner}/${repo} nicht sehen. Bei einem privaten Repository muss es unter Repository access aufgefuhrt sein; die Standardoption "Public repositories" sieht keine privaten Repositories. Prufe auch, ob Resource owner ${owner} ist.`,
+          `Das Token funktioniert — es gehort zu @${login} — kann aber ${owner}/${repo} nicht sehen. Meist fehlt eine Repository-Berechtigung: Setze Permissions → Repository permissions → Contents auf Read and write. Ein Token ohne Repository-Berechtigungen kann sich anmelden, sieht aber gar keine Repositories. Prufe sonst, ob Repository access ${repo} umfasst und Resource owner ${owner} ist.`,
       },
       allFiles: {
         title: 'Alle Dateien',

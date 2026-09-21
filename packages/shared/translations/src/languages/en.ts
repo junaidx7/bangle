@@ -543,7 +543,7 @@ export const t = {
           owner: string;
           repo: string;
         }) =>
-          `The token works — it belongs to @${login} — but cannot see ${owner}/${repo}. For a private repository the token's Repository access must list it; the default "Public repositories" cannot see private repos. Check that Resource owner is ${owner} too.`,
+          `The token works — it belongs to @${login} — but cannot see ${owner}/${repo}. Most often no repository permission was granted: set Permissions → Repository permissions → Contents to Read and write. A token with no repository permissions can sign in but sees no repositories at all. Otherwise check that Repository access covers ${repo} and that Resource owner is ${owner}.`,
       },
       allFiles: {
         title: 'All Files',
