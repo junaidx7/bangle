@@ -105,7 +105,6 @@ export type SidebarCollection = {
   /** Shown as a `+` in the heading; omitted when adding is not offered. */
   onAdd?: (() => void) | undefined;
   addLabel?: string | undefined;
-  emptyLabel?: string | undefined;
 };
 
 type Workspace = {
@@ -748,7 +747,6 @@ function SidebarCollectionGroup({
   items,
   onAdd,
   addLabel,
-  emptyLabel,
 }: SidebarCollection) {
   const { isMobile, setOpenMobile } = useSidebar();
   const [open, setOpen] = React.useState(true);
@@ -758,7 +756,10 @@ function SidebarCollectionGroup({
   }
 
   return (
-    <SidebarGroup className="py-0.5">
+    // No vertical padding: these headings sit above the file tree, which has
+    // a minimum height the app guarantees, so every pixel here is taken from
+    // the tree.
+    <SidebarGroup className="py-0">
       <Collapsible open={open} onOpenChange={setOpen}>
         <div className="flex items-center gap-1 pr-1">
           <CollapsibleTrigger
@@ -788,13 +789,7 @@ function SidebarCollectionGroup({
           )}
         </div>
         <CollapsibleContent>
-          {items.length === 0 ? (
-            emptyLabel ? (
-              <p className="px-2 py-1 text-[11px] text-foreground/40">
-                {emptyLabel}
-              </p>
-            ) : null
-          ) : (
+          {items.length > 0 && (
             <SidebarMenu className="gap-0.5">
               {items.map((item) => {
                 const Icon = resolveCollectionIcon(item.icon);

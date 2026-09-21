@@ -882,8 +882,6 @@ export const t = {
         typesLabel: 'Types',
         addViewLabel: 'New view',
         addTypeLabel: 'New type',
-        noViewsLabel: 'No saved views yet.',
-        noTypesLabel: 'No types yet.',
         starredLabel: 'Starred',
         filesLabel: 'Files',
         fileTreeLabel: 'Workspace files',

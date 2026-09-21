@@ -131,7 +131,6 @@ export const AppSidebar = ({ children }: SidebarProps) => {
           'ui',
         ),
       addLabel: t.app.components.appSidebar.addViewLabel,
-      emptyLabel: t.app.components.appSidebar.noViewsLabel,
     };
   }, [
     noteViews,
@@ -182,7 +181,6 @@ export const AppSidebar = ({ children }: SidebarProps) => {
           'ui',
         ),
       addLabel: t.app.components.appSidebar.addTypeLabel,
-      emptyLabel: t.app.components.appSidebar.noTypesLabel,
     };
   }, [
     noteTypes,

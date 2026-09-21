@@ -773,8 +773,6 @@ export const t = {
         typesLabel: 'Typen',
         addViewLabel: 'Neue Ansicht',
         addTypeLabel: 'Neuer Typ',
-        noViewsLabel: 'Noch keine gespeicherten Ansichten.',
-        noTypesLabel: 'Noch keine Typen.',
         filesLabel: 'Dateien',
         fileTreeLabel: 'Arbeitsbereichsdateien',
         noteCount: ({ count }: { count: number }) =>
