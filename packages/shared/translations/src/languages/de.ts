@@ -433,8 +433,21 @@ export const t = {
         githubTokenLabel: 'Zugriffstoken',
         githubTokenPlaceholder: 'github_pat_...',
         githubTokenHelp:
-          'Verwende ein fein abgestuftes Token mit Contents: Read and write fur dieses Repository. Es wird nur in diesem Browser gespeichert.',
-        githubTokenLink: 'Token erstellen',
+          'Wird nur in diesem Browser gespeichert und nur an GitHub gesendet.',
+        githubTokenLink: 'Token-Seite auf GitHub offnen',
+        githubTokenStepsTitle: 'Woher bekomme ich ein Token?',
+        githubTokenStep1:
+          'Gehe auf GitHub zu Settings -> Developer settings -> Personal access tokens -> Fine-grained tokens.',
+        githubTokenStep2:
+          'Wahle Generate new token und vergib einen Namen sowie ein Ablaufdatum.',
+        githubTokenStep3:
+          'Wahle unter Repository access die Option Only select repositories und das Repository von oben.',
+        githubTokenStep4:
+          'Setze unter Permissions -> Repository permissions die Option Contents auf Read and write.',
+        githubTokenStep5:
+          'Erzeuge das Token und fuge es hier ein. GitHub zeigt den Wert nur einmal an.',
+        githubTokenClassicWarning:
+          'Vermeide ein klassisches Token mit vollem repo-Scope: es hatte Zugriff auf alle deine Repositories. Ein fein abgestuftes Token betrifft nur das oben genannte.',
         githubConnectButton: 'Verbinden',
         githubVerifying: 'Zugriff wird gepruft...',
         githubInvalidRepo: 'Gib ein Repository als besitzer/repository an',

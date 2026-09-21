@@ -506,8 +506,21 @@ export const t = {
         githubTokenLabel: 'Access token',
         githubTokenPlaceholder: 'github_pat_...',
         githubTokenHelp:
-          'Use a fine-grained token with Contents: Read and write on this repository. It is stored in this browser only and never sent anywhere except GitHub.',
-        githubTokenLink: 'Create a token',
+          'Stored in this browser only, and never sent anywhere except GitHub.',
+        githubTokenLink: 'Open the token page on GitHub',
+        githubTokenStepsTitle: 'Where do I get a token?',
+        githubTokenStep1:
+          'On GitHub, go to Settings -> Developer settings -> Personal access tokens -> Fine-grained tokens.',
+        githubTokenStep2:
+          'Choose Generate new token, then give it a name and an expiry date.',
+        githubTokenStep3:
+          'Under Repository access, pick Only select repositories and choose the repo above.',
+        githubTokenStep4:
+          'Under Permissions -> Repository permissions, set Contents to Read and write.',
+        githubTokenStep5:
+          'Generate the token and paste it here. GitHub shows the value only once.',
+        githubTokenClassicWarning:
+          'Avoid a classic token with full repo scope: it would reach every repository you own. A fine-grained token touches only the one above.',
         githubConnectButton: 'Connect',
         githubVerifying: 'Checking access...',
         githubInvalidRepo: 'Enter a repository as owner/repository',

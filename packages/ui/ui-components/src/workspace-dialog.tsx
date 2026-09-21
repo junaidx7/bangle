@@ -1,6 +1,9 @@
 import {
   Button,
   buttonVariants,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   cn,
   Dialog,
   DialogContent,
@@ -12,7 +15,13 @@ import {
   Label,
 } from '@bangle.io/base-ui';
 import type { WorkspaceStorageType } from '@bangle.io/types';
-import { Check, FolderOpen } from 'lucide-react';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  FolderOpen,
+} from 'lucide-react';
 import React, { useEffect, useId, useReducer, useRef } from 'react';
 
 const DEFAULT_STORAGE = 'browser';
@@ -833,16 +842,9 @@ const StageConnectGithub: React.FC<StageConnectGithubProps> = ({
             spellCheck={false}
           />
           <p className="text-foreground/70 text-xs">
-            {t.app.dialogs.createWorkspace.githubTokenHelp}{' '}
-            <a
-              className="text-primary hover:underline"
-              href="https://github.com/settings/personal-access-tokens/new"
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t.app.dialogs.createWorkspace.githubTokenLink}
-            </a>
+            {t.app.dialogs.createWorkspace.githubTokenHelp}
           </p>
+          <GithubTokenHelp />
         </div>
       </div>
       <ErrorMessage error={error} />
@@ -867,6 +869,72 @@ const StageConnectGithub: React.FC<StageConnectGithubProps> = ({
         </Button>
       </WorkspaceDialogFooter>
     </>
+  );
+};
+
+/**
+ * Step-by-step instructions for minting the token, collapsed by default.
+ *
+ * Getting here means leaving the app for a corner of GitHub's settings that
+ * takes four levels of menu to reach, with two options that must be right or
+ * the token silently cannot write. Spelling that out inline — rather than
+ * behind a bare "create a token" link — is the difference between finishing
+ * setup and guessing. It stays collapsed so the form itself is not buried.
+ */
+const GithubTokenHelp: React.FC = () => {
+  const [open, setOpen] = React.useState(false);
+
+  const steps = [
+    t.app.dialogs.createWorkspace.githubTokenStep1,
+    t.app.dialogs.createWorkspace.githubTokenStep2,
+    t.app.dialogs.createWorkspace.githubTokenStep3,
+    t.app.dialogs.createWorkspace.githubTokenStep4,
+    t.app.dialogs.createWorkspace.githubTokenStep5,
+  ];
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger
+        className={cn(
+          buttonVariants({ variant: 'ghost' }),
+          'h-7 justify-start gap-1 px-1 text-primary text-xs hover:underline',
+        )}
+      >
+        {/* Swapping the glyph rather than rotating one: Tailwind v4's `rotate-90`
+            sets the standalone `rotate` property, which `transition-transform`
+            does not animate, so a rotation here would be silently inert. */}
+        {open ? (
+          <ChevronDown className="size-3.5" />
+        ) : (
+          <ChevronRight className="size-3.5" />
+        )}
+        {t.app.dialogs.createWorkspace.githubTokenStepsTitle}
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="mt-1 space-y-2 rounded-md border border-border bg-muted/40 p-3">
+          <ol className="list-decimal space-y-1.5 pl-4 text-foreground/80 text-xs leading-relaxed">
+            {steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+          <p className="text-[11px] text-foreground/60 leading-relaxed">
+            {t.app.dialogs.createWorkspace.githubTokenClassicWarning}
+          </p>
+          <a
+            className={cn(
+              buttonVariants({ variant: 'outline', size: 'sm' }),
+              'h-7 gap-1.5 px-2 text-xs',
+            )}
+            href="https://github.com/settings/personal-access-tokens/new"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <ExternalLink className="size-3.5" />
+            {t.app.dialogs.createWorkspace.githubTokenLink}
+          </a>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
 
