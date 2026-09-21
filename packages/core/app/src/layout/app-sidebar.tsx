@@ -1,4 +1,7 @@
+import { WORKSPACE_STORAGE_TYPE } from '@bangle.io/constants';
 import { useCoreServices } from '@bangle.io/context';
+import type { WorkspaceSyncStatus } from '@bangle.io/service-core';
+import type { SidebarSyncAction } from '@bangle.io/ui-components';
 import { Sidebar, AppSidebar as UIAppSidebar } from '@bangle.io/ui-components';
 import { WsDirPath, WsPath } from '@bangle.io/ws-path';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
@@ -35,6 +38,7 @@ export const AppSidebar = ({ children }: SidebarProps) => {
   const noteWsPaths = useAtomValue(workspaceState.$noteWsPaths);
   const starredWsPaths = useAtomValue(userActivityService.$starredWsPaths);
   const fileTreeListState = useAtomValue(workspaceState.$fileTreeListState);
+  const syncStatus = useAtomValue(workbenchState.$syncStatus);
 
   // Keep this domain-to-view join local until another consumer needs it.
   const starredItems = React.useMemo(() => {
@@ -56,6 +60,19 @@ export const AppSidebar = ({ children }: SidebarProps) => {
         : [];
     });
   }, [activeWsPaths, noteWsPaths, starredWsPaths]);
+
+  const syncAction = useWorkspaceSyncAction({
+    activeWsName,
+    workspaces,
+    syncStatus,
+    onSync: () => {
+      commandDispatcher.dispatch(
+        'command::workspace:sync',
+        { wsName: activeWsName },
+        'ui',
+      );
+    },
+  });
 
   const getActionsForEntry = useSidebarFileActions({
     activeWsName,
@@ -148,6 +165,7 @@ export const AppSidebar = ({ children }: SidebarProps) => {
           })
         }
         canCreateFiles={Boolean(activeWsName)}
+        syncAction={syncAction}
         onCreateDirectory={(pathPrefix) => {
           if (!activeWsName) {
             return;
@@ -261,3 +279,52 @@ export const AppSidebar = ({ children }: SidebarProps) => {
     </Sidebar.SidebarProvider>
   );
 };
+
+/**
+ * Surfaces a sync control only for workspaces that actually have a remote.
+ *
+ * Status is read from workbench state, which the sync command writes, so the
+ * button reflects what actually happened rather than guessing from a timer.
+ */
+function useWorkspaceSyncAction({
+  activeWsName,
+  workspaces,
+  syncStatus,
+  onSync,
+}: {
+  activeWsName: string | undefined;
+  workspaces: ReadonlyArray<{ name: string; type: string }>;
+  syncStatus: WorkspaceSyncStatus;
+  onSync: () => void;
+}): SidebarSyncAction | undefined {
+  const isGithub = React.useMemo(() => {
+    if (!activeWsName) return false;
+    return (
+      workspaces.find((workspace) => workspace.name === activeWsName)?.type ===
+      WORKSPACE_STORAGE_TYPE.Github
+    );
+  }, [activeWsName, workspaces]);
+
+  if (!isGithub || !activeWsName) {
+    return undefined;
+  }
+
+  // Status carries the workspace it belongs to, so switching workspaces shows
+  // a clean button instead of the previous workspace's result.
+  const relevant =
+    syncStatus.type !== 'idle' && syncStatus.wsName === activeWsName
+      ? syncStatus
+      : undefined;
+
+  if (relevant?.type === 'syncing') {
+    return { status: 'syncing', onSync };
+  }
+  if (relevant?.type === 'error') {
+    return { status: 'error', detail: relevant.message, onSync };
+  }
+  if (relevant?.type === 'done') {
+    return { status: 'idle', detail: relevant.summary, onSync };
+  }
+
+  return { status: 'idle', onSync };
+}

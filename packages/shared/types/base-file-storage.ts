@@ -103,3 +103,41 @@ export interface BaseFileStorageProvider {
     options: EmptyObject,
   ) => Promise<void>;
 }
+
+export interface FileStorageConflict {
+  /** Repo-relative path both sides changed. */
+  path: string;
+  /** Where the local version was parked; equals `path` when nothing moved. */
+  conflictPath: string;
+  reason:
+    | 'both-edited'
+    | 'both-created'
+    | 'deleted-remotely'
+    | 'deleted-locally';
+}
+
+export interface FileStorageSyncResult {
+  pulled: string[];
+  pushed: string[];
+  deletedLocally: string[];
+  deletedRemotely: string[];
+  conflicts: FileStorageConflict[];
+  /** Null when the sync was read-only, i.e. nothing local needed pushing. */
+  commitSha: string | null;
+  headSha: string;
+}
+
+/**
+ * Capability marker for providers backed by a remote that must be reconciled
+ * explicitly, as opposed to a local disk that is always already current.
+ *
+ * Kept optional and feature-detected so the core file-system service can offer
+ * "sync this workspace" without every storage type having to pretend it means
+ * something.
+ */
+export interface SyncableFileStorageProvider {
+  sync: (
+    wsName: string,
+    abortSignal?: AbortSignal,
+  ) => Promise<FileStorageSyncResult>;
+}

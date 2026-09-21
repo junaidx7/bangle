@@ -109,6 +109,9 @@ export type WorkspaceStorageType =
   (typeof WORKSPACE_STORAGE_TYPE)[keyof typeof WORKSPACE_STORAGE_TYPE];
 export const FILE_STORAGE_MAX_FILE_SIZE_BYTES = {
   browser: 25 * 1024 * 1024,
+  // GitHub's contents/blob API refuses anything past 100MB, and the practical
+  // ceiling for a base64 round-trip over mobile data is far lower.
+  github: 20 * 1024 * 1024,
   memory: 25 * 1024 * 1024,
   nativeFs: 250 * 1024 * 1024,
 } as const;
@@ -121,6 +124,7 @@ export const SERVICE_NAME = {
   commandDispatchService: 'command-dispatch',
   commandRegistryService: 'command-registry',
   editorService: 'editor',
+  fileStorageGithubService: 'file-storage-github',
   fileStorageIndexedDBService: 'file-storage-indexeddb',
   fileStorageMemoryService: 'file-storage-memory',
   fileStorageNativeFsService: 'file-storage-nativefs',

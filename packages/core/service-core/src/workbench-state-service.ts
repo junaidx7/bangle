@@ -98,6 +98,13 @@ function determineOmniSearchRoute(input: string, currentRoute: Route): Route {
 /**
  * Manages UI state such as theme preferences, dialogs, and omni-search state
  */
+
+export type WorkspaceSyncStatus =
+  | { type: 'idle' }
+  | { type: 'syncing'; wsName: string }
+  | { type: 'done'; wsName: string; at: number; summary: string }
+  | { type: 'error'; wsName: string; at: number; message: string };
+
 export class WorkbenchStateService extends BaseService {
   static deps = ['syncDatabase'] as const;
 
@@ -117,6 +124,15 @@ export class WorkbenchStateService extends BaseService {
   private $_notesTableColumnVisibility:
     | PrimitiveAtom<NotesTableColumnVisibility>
     | undefined;
+
+  /**
+   * Progress of the current workspace's remote sync, for the UI only.
+   *
+   * The authoritative outcome is the files themselves and the toast the sync
+   * command raises; this exists so a button can spin and report the last run
+   * without every caller having to thread state through.
+   */
+  $syncStatus = atom<WorkspaceSyncStatus>({ type: 'idle' });
 
   $openWsDialog = atom(false);
   $openOmniSearch = atom(false);

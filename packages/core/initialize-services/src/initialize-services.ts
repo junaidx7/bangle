@@ -20,8 +20,10 @@ import {
   BrowserErrorHandlerService,
   BrowserLocalStorageSyncDatabaseService,
   BrowserRouterService,
+  FileStorageGithub,
   FileStorageIndexedDB,
   FileStorageNativeFs,
+  type GithubWorkspaceConfig,
   HashStrategy,
   IdbDatabaseService,
   onPageReturn,
@@ -79,6 +81,38 @@ export function initializeServices(
     fileStorageIdb: slot(FileStorageIndexedDB, () => ({
       onChange: (change) => {
         commonOpts.logger.info('File storage change:', change);
+      },
+    })),
+    fileStorageGithub: slot(FileStorageGithub, () => ({
+      onChange: (change) => {
+        commonOpts.logger.info('File storage change:', change);
+      },
+      // A sync rewrites files behind the app's back, so its results have to
+      // re-enter the same event pipeline external edits use — otherwise an
+      // open editor keeps showing content the pull already replaced.
+      onSyncStatusChange: (wsName, status) => {
+        commonOpts.logger.info('GitHub sync:', wsName, status.type);
+        if (status.type === 'done') {
+          rootEmitter.emit('event::file:force-update', {
+            wsName,
+            sender: getEventSenderMetadata({
+              tag: EXTERNAL_FILE_CHANGE_SENDER_TAG,
+            }),
+          });
+        }
+      },
+      getGithubConfig: async (wsName: string) => {
+        assertIsDefined(getWorkspaceOps, 'getWorkspaceOps');
+        const metadata = await getWorkspaceOps().getWorkspaceMetadata(wsName);
+        const config = readGithubMetadata(metadata);
+        if (!config) {
+          throwAppError(
+            'error::workspace:invalid-metadata',
+            `Missing GitHub settings for ${wsName}`,
+            { wsName },
+          );
+        }
+        return config;
       },
     })),
     fileStorageNativeFs: slot(FileStorageNativeFs, () => ({
@@ -149,7 +183,11 @@ export function initializeServices(
     themeManager: theme,
     shortcutTarget: document,
     platformServices: browserPlatformServices,
-    fileStorageSlots: ['fileStorageIdb', 'fileStorageNativeFs'],
+    fileStorageSlots: [
+      'fileStorageIdb',
+      'fileStorageNativeFs',
+      'fileStorageGithub',
+    ],
     editorEngineId,
     editorSaveCoordinator,
   });
@@ -164,4 +202,35 @@ export function initializeServices(
     mountAll: setup.mountAll,
     describe: setup.describe,
   };
+}
+
+/**
+ * Pulls the GitHub settings out of a workspace's metadata bag.
+ *
+ * The token lives here — in IndexedDB alongside the workspace — rather than in
+ * localStorage, so it is scoped to the workspace that needs it and disappears
+ * with it.
+ */
+function readGithubMetadata(
+  metadata: Record<string, unknown>,
+): GithubWorkspaceConfig | undefined {
+  const owner = metadata.githubOwner;
+  const repo = metadata.githubRepo;
+  const branch = metadata.githubBranch;
+  const token = metadata.githubToken;
+
+  if (
+    typeof owner !== 'string' ||
+    typeof repo !== 'string' ||
+    typeof branch !== 'string' ||
+    typeof token !== 'string' ||
+    !owner ||
+    !repo ||
+    !branch ||
+    !token
+  ) {
+    return undefined;
+  }
+
+  return { owner, repo, branch, token };
 }

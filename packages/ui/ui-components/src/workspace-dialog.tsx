@@ -39,10 +39,22 @@ export interface WorkspaceValidation {
   message?: string;
 }
 
+export interface GithubWorkspaceInput {
+  owner: string;
+  repo: string;
+  branch: string;
+  token: string;
+}
+
+export type GithubVerifyResult =
+  | { type: 'success' }
+  | { type: 'error'; errorInfo: ErrorInfo };
+
 export interface WorkspaceConfig {
   name: string;
   type: WorkspaceStorageType;
   dirHandle?: FileSystemDirectoryHandle;
+  github?: GithubWorkspaceInput;
 }
 
 export interface CreateWorkspaceDialogProps {
@@ -51,6 +63,12 @@ export interface CreateWorkspaceDialogProps {
   onDone: (config: WorkspaceConfig) => void | Promise<void>;
   storageTypes: StorageTypeConfig[];
   onDirectoryPick?: () => Promise<DirectoryPickResult>;
+  /**
+   * Confirms the repo exists and the token can write to it. Run before the
+   * workspace is created so a typo or an expired token fails here, with a
+   * usable message, rather than on the first sync.
+   */
+  onGithubVerify?: (input: GithubWorkspaceInput) => Promise<GithubVerifyResult>;
   validateWorkspace: (config: WorkspaceConfig) => WorkspaceValidation;
 }
 
@@ -75,13 +93,30 @@ type NativeFsState = BaseState & {
   dirHandle?: FileSystemDirectoryHandle;
 };
 
-type State = SelectTypeState | BrowserState | NativeFsState;
+type GithubState = BaseState & {
+  stage: 'selected-github';
+  name: string;
+  repo: string;
+  branch: string;
+  token: string;
+  isVerifying?: boolean;
+};
+
+type State = SelectTypeState | BrowserState | NativeFsState | GithubState;
 
 type Action =
   | { type: 'RESET_TO_TYPE_SELECT'; defaultStorage: WorkspaceStorageType }
   | { type: 'NAVIGATE_TO_TYPE_SELECT' }
   | { type: 'NAVIGATE_TO_BROWSER' }
   | { type: 'NAVIGATE_TO_NATIVEFS' }
+  | { type: 'NAVIGATE_TO_GITHUB' }
+  | {
+      type: 'UPDATE_GITHUB_FIELD';
+      field: 'name' | 'repo' | 'branch' | 'token';
+      value: string;
+    }
+  | { type: 'START_VERIFY' }
+  | { type: 'VERIFY_FAILED'; error: ErrorInfo }
   | { type: 'UPDATE_SELECTED_STORAGE'; storage: WorkspaceStorageType }
   | { type: 'UPDATE_WORKSPACE_NAME'; name: string }
   | { type: 'UPDATE_DIRECTORY_HANDLE'; dirHandle?: FileSystemDirectoryHandle }
@@ -101,6 +136,32 @@ function reducer(state: State, action: Action): State {
       return { stage: 'selected-browser', name: '', error: undefined };
     case 'NAVIGATE_TO_NATIVEFS':
       return { stage: 'selected-nativefs', error: undefined };
+    case 'NAVIGATE_TO_GITHUB':
+      return {
+        stage: 'selected-github',
+        name: '',
+        repo: '',
+        // `main` is right for almost every repo made this decade, and the
+        // field stays editable for the ones where it is not.
+        branch: 'main',
+        token: '',
+        error: undefined,
+      };
+    case 'UPDATE_GITHUB_FIELD':
+      if (state.stage === 'selected-github') {
+        return { ...state, [action.field]: action.value, error: undefined };
+      }
+      return state;
+    case 'START_VERIFY':
+      if (state.stage === 'selected-github') {
+        return { ...state, isVerifying: true, error: undefined };
+      }
+      return state;
+    case 'VERIFY_FAILED':
+      if (state.stage === 'selected-github') {
+        return { ...state, isVerifying: false, error: action.error };
+      }
+      return state;
     case 'UPDATE_SELECTED_STORAGE':
       if (state.stage === 'select-type') {
         return { ...state, selected: action.storage, error: undefined };
@@ -149,6 +210,7 @@ export function CreateWorkspaceDialog({
   onDone,
   storageTypes,
   onDirectoryPick,
+  onGithubVerify,
   validateWorkspace,
 }: CreateWorkspaceDialogProps) {
   const defaultStorage =
@@ -219,6 +281,16 @@ export function CreateWorkspaceDialog({
             onCancel={() => onOpenChange(false)}
           />
         )}
+        {state.stage === 'selected-github' && (
+          <StageConnectGithub
+            state={state}
+            dispatch={dispatch}
+            onGithubVerify={onGithubVerify}
+            validateWorkspace={validateWorkspace}
+            onDone={onDone}
+            onCancel={() => onOpenChange(false)}
+          />
+        )}
         {state.stage === 'selected-nativefs' && (
           <StagePickDirectory
             state={state}
@@ -272,10 +344,15 @@ const StageSelectStorage: React.FC<StageSelectStorageProps> = ({
   };
 
   const handleNext = () => {
-    dispatch({
-      type:
-        selected === 'browser' ? 'NAVIGATE_TO_BROWSER' : 'NAVIGATE_TO_NATIVEFS',
-    });
+    if (selected === 'browser') {
+      dispatch({ type: 'NAVIGATE_TO_BROWSER' });
+      return;
+    }
+    if (selected === 'github-storage') {
+      dispatch({ type: 'NAVIGATE_TO_GITHUB' });
+      return;
+    }
+    dispatch({ type: 'NAVIGATE_TO_NATIVEFS' });
   };
 
   return (
@@ -581,6 +658,236 @@ const StagePickDirectory: React.FC<StagePickDirectoryProps> = ({
     </>
   );
 };
+
+interface StageConnectGithubProps {
+  state: GithubState;
+  dispatch: React.Dispatch<Action>;
+  onGithubVerify: CreateWorkspaceDialogProps['onGithubVerify'];
+  validateWorkspace: CreateWorkspaceDialogProps['validateWorkspace'];
+  onDone: CreateWorkspaceDialogProps['onDone'];
+  onCancel: () => void;
+}
+
+const StageConnectGithub: React.FC<StageConnectGithubProps> = ({
+  state,
+  dispatch,
+  onGithubVerify,
+  validateWorkspace,
+  onDone,
+  onCancel,
+}) => {
+  const { name, repo, branch, token, error, isSubmitting, isVerifying } = state;
+  const nameId = useId();
+  const repoId = useId();
+  const branchId = useId();
+  const tokenId = useId();
+  const repoRef = useRef<HTMLInputElement>(null);
+  const submitWorkspace = useWorkspaceSubmit(dispatch, onDone);
+
+  useEffect(() => {
+    repoRef.current?.focus();
+  }, []);
+
+  const setField = (field: 'name' | 'repo' | 'branch' | 'token') => {
+    return (event: React.ChangeEvent<HTMLInputElement>) => {
+      dispatch({
+        type: 'UPDATE_GITHUB_FIELD',
+        field,
+        value: event.target.value,
+      });
+    };
+  };
+
+  const parsed = parseOwnerRepo(repo);
+  const busy = isSubmitting || isVerifying;
+  const canSubmit = Boolean(parsed && token.trim() && branch.trim() && !busy);
+
+  const fail = (message: string) => {
+    dispatch({ type: 'VERIFY_FAILED', error: { message } });
+  };
+
+  const handleSubmit = async () => {
+    if (!parsed) {
+      fail(t.app.dialogs.createWorkspace.githubInvalidRepo);
+      return;
+    }
+    if (!token.trim()) {
+      fail(t.app.dialogs.createWorkspace.githubMissingToken);
+      return;
+    }
+
+    const github: GithubWorkspaceInput = {
+      owner: parsed.owner,
+      repo: parsed.repo,
+      branch: branch.trim(),
+      token: token.trim(),
+    };
+    // Default the workspace name to the repo so the common case needs no typing.
+    const wsName = name.trim() || parsed.repo;
+    const config: WorkspaceConfig = {
+      type: 'github-storage',
+      name: wsName,
+      github,
+    };
+
+    const validation = validateWorkspace(config);
+    if (!validation.isValid) {
+      fail(
+        validation.message || t.app.dialogs.createWorkspace.invalidNameDefault,
+      );
+      return;
+    }
+
+    if (onGithubVerify) {
+      dispatch({ type: 'START_VERIFY' });
+      const result = await onGithubVerify(github);
+      if (result.type === 'error') {
+        dispatch({ type: 'VERIFY_FAILED', error: result.errorInfo });
+        return;
+      }
+    }
+
+    await submitWorkspace(config);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' && canSubmit) {
+      event.preventDefault();
+      void handleSubmit();
+    }
+  };
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>
+          {t.app.dialogs.createWorkspace.githubSetupTitle}
+        </DialogTitle>
+        <DialogDescription>
+          {t.app.dialogs.createWorkspace.githubSetupDescription}
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4 py-2">
+        <div className="space-y-2">
+          <Label htmlFor={repoId}>
+            {t.app.dialogs.createWorkspace.githubRepoLabel}
+          </Label>
+          <Input
+            id={repoId}
+            ref={repoRef}
+            value={repo}
+            onChange={setField('repo')}
+            onKeyDown={handleKeyDown}
+            placeholder={t.app.dialogs.createWorkspace.githubRepoPlaceholder}
+            disabled={busy}
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor={branchId}>
+              {t.app.dialogs.createWorkspace.githubBranchLabel}
+            </Label>
+            <Input
+              id={branchId}
+              value={branch}
+              onChange={setField('branch')}
+              onKeyDown={handleKeyDown}
+              disabled={busy}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={nameId}>
+              {t.app.dialogs.createWorkspace.nameLabel}
+            </Label>
+            <Input
+              id={nameId}
+              value={name}
+              onChange={setField('name')}
+              onKeyDown={handleKeyDown}
+              placeholder={parsed?.repo ?? ''}
+              disabled={busy}
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor={tokenId}>
+            {t.app.dialogs.createWorkspace.githubTokenLabel}
+          </Label>
+          <Input
+            id={tokenId}
+            // A password field keeps the token out of shoulder view and out of
+            // the browser's ordinary autofill store.
+            type="password"
+            value={token}
+            onChange={setField('token')}
+            onKeyDown={handleKeyDown}
+            placeholder={t.app.dialogs.createWorkspace.githubTokenPlaceholder}
+            disabled={busy}
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <p className="text-foreground/70 text-xs">
+            {t.app.dialogs.createWorkspace.githubTokenHelp}{' '}
+            <a
+              className="text-primary hover:underline"
+              href="https://github.com/settings/personal-access-tokens/new"
+              target="_blank"
+              rel="noreferrer"
+            >
+              {t.app.dialogs.createWorkspace.githubTokenLink}
+            </a>
+          </p>
+        </div>
+      </div>
+      <ErrorMessage error={error} />
+      <WorkspaceDialogFooter
+        leadingAction={
+          <Button
+            variant="outline"
+            onClick={() => dispatch({ type: 'NAVIGATE_TO_TYPE_SELECT' })}
+            disabled={busy}
+          >
+            {t.app.common.backButton}
+          </Button>
+        }
+      >
+        <Button variant="outline" onClick={onCancel} disabled={busy}>
+          {t.app.common.cancelButton}
+        </Button>
+        <Button onClick={() => void handleSubmit()} disabled={!canSubmit}>
+          {isVerifying
+            ? t.app.dialogs.createWorkspace.githubVerifying
+            : t.app.dialogs.createWorkspace.githubConnectButton}
+        </Button>
+      </WorkspaceDialogFooter>
+    </>
+  );
+};
+
+/**
+ * Local, forgiving parse of the repository field. The dialog only needs to know
+ * whether the input is shaped like a repo yet; the app layer does the
+ * authoritative parse before talking to GitHub.
+ */
+function parseOwnerRepo(
+  raw: string,
+): { owner: string; repo: string } | undefined {
+  const trimmed = raw.trim().replace(/^https?:\/\/(www\.)?github\.com\//, '');
+  const [owner, repo] = trimmed
+    .replace(/^git@github\.com:/, '')
+    .replace(/\.git$/, '')
+    .split('/');
+  if (!owner || !repo) {
+    return undefined;
+  }
+  return { owner, repo: repo.replace(/\/$/, '') };
+}
 
 interface ListItemProps {
   title: string;

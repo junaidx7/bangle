@@ -15,9 +15,11 @@ import {
   ExternalLink,
   GalleryVerticalEnd,
   Plus,
+  RefreshCw,
   Search,
   Settings,
   Star,
+  TriangleAlert,
 } from 'lucide-react';
 import React from 'react';
 import bangleIcon from './bangle-transparent_x512.png';
@@ -59,8 +61,22 @@ type Workspace = {
   isActive?: boolean;
 };
 
+export interface SidebarSyncAction {
+  status: 'idle' | 'syncing' | 'error';
+  /** Short line under the button: last sync time, or what went wrong. */
+  detail?: string;
+  onSync: () => void;
+}
+
 export type AppSidebarProps = {
   canCreateFiles: boolean;
+  /**
+   * Present only for workspaces backed by a remote. Given first-class space
+   * rather than hiding behind the command palette, because on a phone the
+   * palette is the least reachable part of the app and syncing is the one
+   * action a remote workspace genuinely needs.
+   */
+  syncAction?: SidebarSyncAction;
   onNewWorkspaceClick: () => void;
   onManageWorkspacesClick: () => void;
   workspaces: Workspace[];
@@ -221,6 +237,7 @@ export function AppSidebar({
   navItems,
   starredItems = [],
   onSearchClick = () => {},
+  syncAction,
   activeFilePaths = [],
   getActionsForEntry,
   onCreateDirectory,
@@ -278,6 +295,7 @@ export function AppSidebar({
             {t.app.components.appSidebar.filesLabel}
           </SidebarGroupLabel>
           <SidebarGroupContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            {syncAction && <SidebarSyncButton {...syncAction} />}
             {fileTreeNotice && (
               <div
                 role="alert"
@@ -627,5 +645,38 @@ function WorkspaceSwitcher({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
+  );
+}
+
+function SidebarSyncButton({ status, detail, onSync }: SidebarSyncAction) {
+  const isSyncing = status === 'syncing';
+
+  return (
+    <div className="mx-2 mb-1 flex flex-col gap-1">
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 w-full justify-start gap-2 px-2 text-xs"
+        onClick={onSync}
+        disabled={isSyncing}
+      >
+        {status === 'error' ? (
+          <TriangleAlert className="size-3.5 text-destructive" />
+        ) : (
+          <RefreshCw className={cn('size-3.5', isSyncing && 'animate-spin')} />
+        )}
+        <span>{t.app.github.syncButton}</span>
+      </Button>
+      {detail && (
+        <span
+          className={cn(
+            'px-1 text-[11px] leading-tight',
+            status === 'error' ? 'text-destructive' : 'text-foreground/60',
+          )}
+        >
+          {detail}
+        </span>
+      )}
+    </div>
   );
 }

@@ -15,7 +15,9 @@ import type {
   BaseFileStorageService,
   EventSenderMetadata,
   FileStat,
+  FileStorageSyncResult,
   ScopedEmitter,
+  SyncableFileStorageProvider,
 } from '@bangle.io/types';
 import { isVisibleWorkspaceFilePath, WsPath } from '@bangle.io/ws-path';
 import { atom } from 'jotai';
@@ -668,9 +670,11 @@ export class FileSystemService extends BaseService {
       case WORKSPACE_STORAGE_TYPE.Memory: {
         return getDep(WORKSPACE_STORAGE_TYPE.Memory);
       }
-      case WORKSPACE_STORAGE_TYPE.Help:
-      case WORKSPACE_STORAGE_TYPE.PrivateFS:
       case WORKSPACE_STORAGE_TYPE.Github: {
+        return getDep(WORKSPACE_STORAGE_TYPE.Github);
+      }
+      case WORKSPACE_STORAGE_TYPE.Help:
+      case WORKSPACE_STORAGE_TYPE.PrivateFS: {
         throwAppError(
           'error::workspace:unknown-ws-type',
           `${wsInfoType} workspace is not supported for file operations`,
@@ -721,5 +725,72 @@ export class FileSystemService extends BaseService {
       ...change.payload,
       sender: getEventSenderMetadata({ tag: this.name }),
     });
+  }
+
+  /**
+   * Reconciles a workspace with its remote, when it has one.
+   *
+   * Only some storage types have anything to sync — a native-FS workspace is
+   * the disk, so there is no second copy to reconcile. Rather than force every
+   * provider to implement a no-op, this feature-detects the capability and
+   * tells the caller plainly when a workspace cannot sync.
+   */
+  async syncWorkspace(
+    wsName: string,
+    abortSignal?: AbortSignal,
+  ): Promise<FileStorageSyncResult> {
+    await this.mountPromise;
+    const storage = await this.getStorageServiceForWorkspace(wsName);
+
+    if (!FileSystemService.isSyncable(storage)) {
+      throwAppError(
+        'error::workspace:unknown-ws-type',
+        `${storage.workspaceType} workspaces do not sync`,
+        { wsName, type: storage.workspaceType },
+      );
+    }
+
+    return storage.sync(wsName, abortSignal);
+  }
+
+  /** True when a workspace has a remote that `syncWorkspace` can reconcile. */
+  async canSync(wsName: string): Promise<boolean> {
+    await this.mountPromise;
+    try {
+      return FileSystemService.isSyncable(
+        await this.getStorageServiceForWorkspace(wsName),
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private async getStorageServiceForWorkspace(
+    wsName: string,
+  ): Promise<BaseFileStorageService> {
+    const wsInfo =
+      await this.dependencies.workspaceOps.getWorkspaceInfo(wsName);
+    if (!wsInfo) {
+      throwAppError(
+        'error::workspace:not-found',
+        `Workspace not found: ${wsName}`,
+        { wsName },
+      );
+    }
+    return FileSystemService._getStorageServiceForType(
+      wsInfo.type as WorkspaceStorageType,
+      this.config.getFileStorageServices(),
+      wsName,
+    );
+  }
+
+  static isSyncable(
+    provider: unknown,
+  ): provider is BaseFileStorageService & SyncableFileStorageProvider {
+    return (
+      typeof provider === 'object' &&
+      provider !== null &&
+      typeof (provider as SyncableFileStorageProvider).sync === 'function'
+    );
   }
 }

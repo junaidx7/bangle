@@ -421,6 +421,31 @@ export const t = {
           'Verzeichnisauswahl wird nicht unterstützt.',
         pickDirectoryButton: 'Verzeichnis auswählen',
         invalidDirectoryDefault: 'Ungültige Verzeichnisauswahl',
+        githubTitle: 'GitHub-Repository',
+        githubDescription:
+          'Notizen mit einem GitHub-Repo synchronisieren. Bearbeitung funktioniert offline.',
+        githubSetupTitle: 'GitHub-Repository verbinden',
+        githubSetupDescription:
+          'Notizen bleiben in diesem Browser und werden beim Synchronisieren ins Repo ubertragen.',
+        githubRepoLabel: 'Repository',
+        githubRepoPlaceholder: 'besitzer/repository',
+        githubBranchLabel: 'Branch',
+        githubTokenLabel: 'Zugriffstoken',
+        githubTokenPlaceholder: 'github_pat_...',
+        githubTokenHelp:
+          'Verwende ein fein abgestuftes Token mit Contents: Read and write fur dieses Repository. Es wird nur in diesem Browser gespeichert.',
+        githubTokenLink: 'Token erstellen',
+        githubConnectButton: 'Verbinden',
+        githubVerifying: 'Zugriff wird gepruft...',
+        githubInvalidRepo: 'Gib ein Repository als besitzer/repository an',
+        githubMissingToken: 'Gib ein Zugriffstoken ein',
+        githubBranchMissing: ({ branch }: { branch: string }) =>
+          `Der Branch "${branch}" existiert in diesem Repository nicht.`,
+        githubNoPush: 'Dieses Token kann nicht in das Repository schreiben.',
+        githubAuthFailed:
+          'GitHub hat das Token abgelehnt. Prufe, ob es abgelaufen ist und Contents: Read and write erlaubt.',
+        githubRepoNotFound:
+          'Repository nicht gefunden. Prufe den Namen und die Berechtigungen des Tokens.',
       },
       allFiles: {
         title: 'Alle Dateien',
@@ -434,6 +459,42 @@ export const t = {
       singleInput: {
         placeholderDefault: 'Eingabe..',
       },
+    },
+    github: {
+      syncing: 'Synchronisierung mit GitHub...',
+      syncUpToDate: 'Bereits aktuell',
+      syncUnsupported: 'Dieser Arbeitsbereich hat nichts zu synchronisieren.',
+      syncButton: 'Sync',
+      syncSummary: ({
+        pulled,
+        pushed,
+        deleted,
+      }: {
+        pulled: number;
+        pushed: number;
+        deleted: number;
+      }) => {
+        const parts: string[] = [];
+        if (pulled > 0) parts.push(`${pulled} empfangen`);
+        if (pushed > 0) parts.push(`${pushed} gesendet`);
+        if (deleted > 0) parts.push(`${deleted} entfernt`);
+        return `Synchronisiert (${parts.join(', ')})`;
+      },
+      conflictsParked: ({ count, first }: { count: number; first: string }) =>
+        count === 1
+          ? `Beide Seiten haben eine Notiz geandert. Deine Version wurde als ${first} gespeichert.`
+          : `Beide Seiten haben ${count} Notizen geandert. Deine Versionen wurden daneben gespeichert, beginnend mit ${first}.`,
+      conflictsResolved: ({ count }: { count: number }) =>
+        `${count} Notiz(en) wurden auf GitHub geandert und hier wiederhergestellt.`,
+      errorAuth:
+        'GitHub hat das Token abgelehnt. Es ist moglicherweise abgelaufen oder hat den Zugriff verloren.',
+      errorNetwork:
+        'GitHub war nicht erreichbar. Deine Anderungen sind lokal gespeichert.',
+      errorRateLimit: 'GitHub-Ratenlimit erreicht. Versuche es gleich erneut.',
+      errorNotFound:
+        'Das Repository oder der Branch ist nicht mehr erreichbar.',
+      errorConflict:
+        'Der Branch hat sich wahrend der Synchronisierung geandert. Synchronisiere erneut.',
     },
     errors: {
       workspace: {

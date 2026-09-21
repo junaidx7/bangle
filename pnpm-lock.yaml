@@ -114,6 +114,9 @@ importers:
       '@bangle.io/fuzzysearch':
         specifier: workspace:*
         version: link:../../js-lib/fuzzysearch
+      '@bangle.io/github-api':
+        specifier: workspace:*
+        version: link:../../js-lib/github-api
       '@bangle.io/logger':
         specifier: workspace:*
         version: link:../../js-lib/logger
@@ -555,6 +558,8 @@ importers:
 
   packages/js-lib/fuzzysearch: {}
 
+  packages/js-lib/github-api: {}
+
   packages/js-lib/logger: {}
 
   packages/js-lib/markdown-syntax:
@@ -663,6 +668,9 @@ importers:
       '@bangle.io/constants':
         specifier: workspace:*
         version: link:../../shared/constants
+      '@bangle.io/github-api':
+        specifier: workspace:*
+        version: link:../../js-lib/github-api
       '@bangle.io/mini-js-utils':
         specifier: workspace:*
         version: link:../../js-lib/mini-js-utils
@@ -675,6 +683,9 @@ importers:
       '@bangle.io/ws-path':
         specifier: workspace:*
         version: link:../../shared/ws-path
+      idb:
+        specifier: ^8.0.3
+        version: 8.0.3
       jotai:
         specifier: ^2.20.1
         version: 2.20.1(@babel/core@7.29.7)(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.7)

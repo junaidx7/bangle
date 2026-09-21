@@ -26,6 +26,7 @@ export {
 export type { ShortcutServiceConfig } from './shortcut-service';
 export { ShortcutService } from './shortcut-service';
 export { UserActivityService } from './user-activity-service';
+export type { WorkspaceSyncStatus } from './workbench-state-service';
 export { WorkbenchStateService } from './workbench-state-service';
 export type {
   AssetDestinationInput,

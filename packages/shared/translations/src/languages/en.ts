@@ -494,6 +494,31 @@ export const t = {
         pickDirectoryButton: 'Pick Directory',
         invalidDirectoryDefault: 'Invalid directory selection',
         createFailed: 'Could not create the workspace. Please try again.',
+        githubTitle: 'GitHub repository',
+        githubDescription:
+          'Sync notes with a GitHub repo. Edits work offline and sync later.',
+        githubSetupTitle: 'Connect a GitHub repository',
+        githubSetupDescription:
+          'Notes are kept in this browser and synced to the repo when you sync.',
+        githubRepoLabel: 'Repository',
+        githubRepoPlaceholder: 'owner/repository',
+        githubBranchLabel: 'Branch',
+        githubTokenLabel: 'Access token',
+        githubTokenPlaceholder: 'github_pat_...',
+        githubTokenHelp:
+          'Use a fine-grained token with Contents: Read and write on this repository. It is stored in this browser only and never sent anywhere except GitHub.',
+        githubTokenLink: 'Create a token',
+        githubConnectButton: 'Connect',
+        githubVerifying: 'Checking access...',
+        githubInvalidRepo: 'Enter a repository as owner/repository',
+        githubMissingToken: 'Enter an access token',
+        githubBranchMissing: ({ branch }: { branch: string }) =>
+          `The branch "${branch}" does not exist in this repository.`,
+        githubNoPush: 'This token cannot write to the repository.',
+        githubAuthFailed:
+          'GitHub rejected the token. Check that it has not expired and grants Contents: Read and write.',
+        githubRepoNotFound:
+          'Repository not found. Check the name, and that the token grants access to it.',
       },
       allFiles: {
         title: 'All Files',
@@ -507,6 +532,39 @@ export const t = {
       singleInput: {
         placeholderDefault: 'Input..',
       },
+    },
+    github: {
+      syncing: 'Syncing with GitHub...',
+      syncUpToDate: 'Already up to date',
+      syncUnsupported: 'This workspace has nothing to sync.',
+      syncButton: 'Sync',
+      syncSummary: ({
+        pulled,
+        pushed,
+        deleted,
+      }: {
+        pulled: number;
+        pushed: number;
+        deleted: number;
+      }) => {
+        const parts: string[] = [];
+        if (pulled > 0) parts.push(`${pulled} in`);
+        if (pushed > 0) parts.push(`${pushed} out`);
+        if (deleted > 0) parts.push(`${deleted} removed`);
+        return `Synced (${parts.join(', ')})`;
+      },
+      conflictsParked: ({ count, first }: { count: number; first: string }) =>
+        count === 1
+          ? `Both sides changed a note. Your version was saved as ${first}.`
+          : `Both sides changed ${count} notes. Your versions were saved alongside them, starting with ${first}.`,
+      conflictsResolved: ({ count }: { count: number }) =>
+        `${count} note${count === 1 ? '' : 's'} changed on GitHub and were restored here.`,
+      errorAuth:
+        'GitHub rejected the token. It may have expired or lost access to the repository.',
+      errorNetwork: 'Could not reach GitHub. Your edits are saved locally.',
+      errorRateLimit: 'GitHub rate limit reached. Try again shortly.',
+      errorNotFound: 'The repository or branch is no longer reachable.',
+      errorConflict: 'The branch moved while syncing. Sync again to catch up.',
     },
     errors: {
       workspace: {

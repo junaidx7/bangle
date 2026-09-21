@@ -6,6 +6,10 @@ import {
 } from '@bangle.io/base-utils';
 import { EDITOR_SAVE_DRAIN_TIMEOUT_MS } from '@bangle.io/constants';
 import { waitForSaveQueueToDrain } from '@bangle.io/service-core';
+import type {
+  FileStorageConflict,
+  FileStorageSyncResult,
+} from '@bangle.io/types';
 import { toast } from '@bangle.io/ui-components';
 import { WsDirPath, WsPath } from '@bangle.io/ws-path';
 import { c, getCtx } from './helper';
@@ -731,6 +735,70 @@ export const wsCommandHandlers = [
   ),
 
   c(
+    'command::workspace:sync',
+    async (
+      { workspaceState, fileSystem, editorEngine, workbenchState },
+      { wsName: argWsName },
+      key,
+    ) => {
+      const { store } = getCtx(key);
+      const wsName = argWsName ?? store.get(workspaceState.$currentWsName);
+
+      if (!wsName) {
+        throwAppError(
+          'error::workspace:not-opened',
+          t.app.errors.workspace.notOpened,
+          {},
+        );
+        return;
+      }
+
+      if (!(await fileSystem.canSync(wsName))) {
+        toast.info(t.app.github.syncUnsupported);
+        return;
+      }
+
+      // Local edits are held in the save queue for a moment after typing
+      // stops. Pushing before it drains would commit the previous version and
+      // leave the newest one looking dirty until the next sync.
+      await waitForSaveQueueToDrain(editorEngine, EDITOR_SAVE_DRAIN_TIMEOUT_MS);
+
+      const toastId = toast.loading(t.app.github.syncing);
+      store.set(workbenchState.$syncStatus, { type: 'syncing', wsName });
+
+      try {
+        const result = await fileSystem.syncWorkspace(wsName);
+        const summary = describeSyncResult(result);
+        toast.success(summary, { id: toastId });
+        store.set(workbenchState.$syncStatus, {
+          type: 'done',
+          wsName,
+          at: Date.now(),
+          summary,
+        });
+
+        if (result.conflicts.length > 0) {
+          // Conflicts are the one outcome the user has to act on, so they get
+          // their own persistent message rather than a line in the summary.
+          toast.warning(describeConflicts(result.conflicts), {
+            duration: Number.POSITIVE_INFINITY,
+          });
+        }
+      } catch (error) {
+        const message = describeSyncError(error);
+        toast.error(message, { id: toastId });
+        store.set(workbenchState.$syncStatus, {
+          type: 'error',
+          wsName,
+          at: Date.now(),
+          message,
+        });
+        throw error;
+      }
+    },
+  ),
+
+  c(
     'command::workspace:toggle-star',
     async (
       { workspaceState, userActivityService },
@@ -758,3 +826,60 @@ export const wsCommandHandlers = [
     },
   ),
 ];
+
+function describeSyncResult(result: FileStorageSyncResult): string {
+  const moved =
+    result.pulled.length +
+    result.pushed.length +
+    result.deletedLocally.length +
+    result.deletedRemotely.length;
+
+  if (moved === 0) {
+    return t.app.github.syncUpToDate;
+  }
+
+  return t.app.github.syncSummary({
+    pulled: result.pulled.length,
+    pushed: result.pushed.length,
+    deleted: result.deletedLocally.length + result.deletedRemotely.length,
+  });
+}
+
+function describeConflicts(conflicts: FileStorageConflict[]): string {
+  const parked = conflicts.filter((c) => c.conflictPath !== c.path);
+  if (parked.length === 0) {
+    return t.app.github.conflictsResolved({ count: conflicts.length });
+  }
+  return t.app.github.conflictsParked({
+    count: parked.length,
+    first: parked[0]?.conflictPath ?? '',
+  });
+}
+
+function describeSyncError(error: unknown): string {
+  if (isAppError(error)) {
+    return error.message;
+  }
+
+  // The GitHub client tags its failures, and the right advice differs sharply
+  // between "your token expired" and "you are offline".
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error
+      ? String((error as { code: unknown }).code)
+      : undefined;
+
+  switch (code) {
+    case 'auth':
+      return t.app.github.errorAuth;
+    case 'network':
+      return t.app.github.errorNetwork;
+    case 'rate-limit':
+      return t.app.github.errorRateLimit;
+    case 'not-found':
+      return t.app.github.errorNotFound;
+    case 'conflict':
+      return t.app.github.errorConflict;
+    default:
+      return error instanceof Error ? error.message : String(error);
+  }
+}

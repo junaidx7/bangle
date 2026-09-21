@@ -33,10 +33,12 @@
     "@bangle.io/browser-utils": "workspace:*",
     "@bangle.io/config": "workspace:*",
     "@bangle.io/constants": "workspace:*",
+    "@bangle.io/github-api": "workspace:*",
     "@bangle.io/mini-js-utils": "workspace:*",
     "@bangle.io/native-fs": "workspace:*",
     "@bangle.io/types": "workspace:*",
     "@bangle.io/ws-path": "workspace:*",
+    "idb": "^8.0.3",
     "jotai": "^2.20.1",
     "page-lifecycle": "^0.1.2",
     "wouter": "^3.10.0"

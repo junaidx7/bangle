@@ -201,6 +201,33 @@ export const wsCommands = narrow([
     },
   },
   {
+    id: 'command::workspace:sync',
+    title: 'Sync Workspace',
+    keywords: [
+      'sync',
+      'github',
+      'git',
+      'push',
+      'pull',
+      'commit',
+      'upload',
+      'download',
+    ],
+    omniSearch: 'workspace',
+    dependencies: {
+      services: [
+        'workspaceState',
+        'fileSystem',
+        'editorEngine',
+        'workbenchState',
+      ],
+    },
+    keybindings: ['ctrl', 'shift', 'y'],
+    args: {
+      wsName: T.Optional(T.String),
+    },
+  },
+  {
     id: 'command::workspace:toggle-star',
     title: 'Toggle Star for Current Note',
     keywords: ['star', 'unstar', 'favorite', 'note', 'toggle', 'workspace'],

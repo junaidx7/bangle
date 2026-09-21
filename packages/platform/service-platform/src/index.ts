@@ -1,8 +1,15 @@
 export { BrowserErrorHandlerService } from './browser-error-handler';
 export { BrowserLocalStorageSyncDatabaseService } from './browser-local-storage-sync-database';
+export type {
+  GithubSyncStatus,
+  GithubWorkspaceConfig,
+} from './file-storage-github';
+export { FileStorageGithub } from './file-storage-github';
 export { FileStorageIndexedDB } from './file-storage-indexeddb';
 export { FileStorageMemory } from './file-storage-memory';
 export { FileStorageNativeFs } from './file-storage-nativefs';
+export type { ConflictInfo, SyncResult } from './github-sync';
+export { conflictPathFor } from './github-sync';
 export type { AppDatabase } from './idb-database';
 export {
   ALL_TABLES,

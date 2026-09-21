@@ -35,6 +35,7 @@
     "@bangle.io/editor": "workspace:*",
     "@bangle.io/editor-w": "workspace:*",
     "@bangle.io/fuzzysearch": "workspace:*",
+    "@bangle.io/github-api": "workspace:*",
     "@bangle.io/logger": "workspace:*",
     "@bangle.io/native-fs": "workspace:*",
     "@bangle.io/omni-search": "workspace:*",

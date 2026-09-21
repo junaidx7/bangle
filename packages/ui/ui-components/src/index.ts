@@ -99,6 +99,7 @@ export { AppAlertDialog } from './app-alert-dialog';
 export type {
   AppSidebarProps,
   NavItem,
+  SidebarSyncAction,
 } from './app-sidebar';
 export { AppSidebar } from './app-sidebar';
 export { default as bangleTransparentIconUrl } from './bangle-transparent_x512.png';
@@ -131,6 +132,8 @@ export type {
   CreateWorkspaceDialogProps,
   DirectoryPickResult,
   ErrorInfo,
+  GithubVerifyResult,
+  GithubWorkspaceInput,
   StorageTypeConfig,
   WorkspaceConfig,
   WorkspaceValidation,

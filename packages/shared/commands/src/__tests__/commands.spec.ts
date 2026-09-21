@@ -32,6 +32,7 @@ const expectedOmniSearchCommandIds: Record<OmniSearchScope, string[]> = {
     'command::ui:create-directory-dialog',
     'command::ui:create-note-dialog',
     'command::ui:toggle-all-files',
+    'command::workspace:sync',
     'command::ws:daily-note',
     'command::ws:go-ws-home',
     'command::ws:quick-new-note',
