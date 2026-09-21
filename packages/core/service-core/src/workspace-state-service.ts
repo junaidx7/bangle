@@ -173,6 +173,9 @@ export interface NoteMetaIndexState {
 /** Where saved views live, matching Tolaria's convention. */
 export const VIEWS_DIRECTORY = 'views';
 
+/** Fields every workspace has, offered before vault-specific keys. */
+const BUILT_IN_FILTER_FIELDS = ['type', 'status', 'title', 'favorite'] as const;
+
 const EMPTY_NOTE_META: ReadonlyMap<string, NoteMeta> = new Map();
 
 const EMPTY_NOTE_META_INDEX_STATE: NoteMetaIndexState = {
@@ -351,6 +354,34 @@ export class WorkspaceStateService extends BaseService {
       byView.set(view.id, matched);
     }
     return byView;
+  });
+
+  /**
+   * Field names a view filter can address: the built-ins first, then every
+   * frontmatter key actually present in this workspace.
+   *
+   * Suggesting real keys matters because vaults invent their own — "Project",
+   * "Sub Category", "Pinned" — and a builder offering only built-ins would be
+   * unusable for the filters people actually write.
+   */
+  $filterableFields = atom<readonly string[]>((get) => {
+    const index = get(this.$noteMetaIndex);
+    const seen = new Set<string>();
+    for (const meta of index.byWsPath.values()) {
+      for (const key of Object.keys(meta.frontmatter)) {
+        // Underscore-prefixed keys are app-managed state, not user fields.
+        if (!key.startsWith('_')) {
+          seen.add(key);
+        }
+      }
+    }
+    for (const builtIn of BUILT_IN_FILTER_FIELDS) {
+      seen.delete(builtIn);
+    }
+    return [
+      ...BUILT_IN_FILTER_FIELDS,
+      ...[...seen].sort((a, b) => a.localeCompare(b)),
+    ];
   });
 
   private $backlinkIndexAsync = atom<Promise<BacklinkIndexState>>(

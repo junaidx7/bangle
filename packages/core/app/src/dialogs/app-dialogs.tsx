@@ -7,6 +7,7 @@ import {
 import { useAtom } from 'jotai';
 import React from 'react';
 import { AllFilesDialog } from './all-files-dialog';
+import { CreateViewDialog } from './create-view-dialog';
 import { CreateWorkspaceDialog } from './create-workspace-dialog';
 import { StaleTabDialog } from './stale-tab-dialog';
 
@@ -28,6 +29,7 @@ export function AppDialogs() {
       <StaleTabDialog />
       <AllFilesDialog />
       <CreateWorkspaceDialog />
+      <CreateViewDialog />
       <AppAlertDialog
         key={alertDialog?.dialogId}
         open={Boolean(alertDialog)}

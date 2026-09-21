@@ -333,3 +333,87 @@ export function evaluateFilter(
   }
   return evaluateCondition(note, node);
 }
+
+/** Operators that take no `value`, so the builder hides the value field. */
+export const VALUELESS_OPS: ReadonlySet<FilterOp> = new Set([
+  'is_empty',
+  'is_not_empty',
+]);
+
+/** Operators where a regular expression is meaningful. */
+export const REGEX_OPS: ReadonlySet<FilterOp> = new Set([
+  'equals',
+  'not_equals',
+  'contains',
+  'not_contains',
+]);
+
+function serializeNode(node: FilterNode, indent: string): string[] {
+  if ('combinator' in node) {
+    const lines = [`${indent}- ${node.combinator}:`];
+    for (const child of node.nodes) {
+      lines.push(...serializeNode(child, `${indent}  `));
+    }
+    return lines;
+  }
+
+  const lines = [
+    `${indent}- field: ${quote(node.field)}`,
+    `${indent}  op: ${node.op}`,
+  ];
+  if (!VALUELESS_OPS.has(node.op)) {
+    lines.push(`${indent}  value: ${quote(String(node.value ?? ''))}`);
+  }
+  if (node.regex && REGEX_OPS.has(node.op)) {
+    lines.push(`${indent}  regex: true`);
+  }
+  return lines;
+}
+
+/**
+ * Quotes only when YAML would otherwise misread the text.
+ *
+ * Leaving simple words bare keeps generated files looking like the
+ * hand-written ones already in a vault, which matters because people edit
+ * these by hand after the builder creates them.
+ */
+function quote(value: string): string {
+  if (value === '') {
+    return "''";
+  }
+  if (
+    /^[\w][\w .\-/]*$/.test(value) &&
+    !/^(y|n|yes|no|on|off|true|false|null)$/i.test(value)
+  ) {
+    return value;
+  }
+  return JSON.stringify(value);
+}
+
+export function serializeViewDefinition(view: {
+  name: string;
+  icon?: string | undefined;
+  color?: string | undefined;
+  order?: number | undefined;
+  sort?: string | undefined;
+  filters?: FilterGroup | undefined;
+}): string {
+  const lines = [
+    `name: ${quote(view.name)}`,
+    `icon: ${view.icon ? quote(view.icon) : 'null'}`,
+    `color: ${view.color ? quote(view.color) : 'null'}`,
+  ];
+  if (view.order !== undefined) {
+    lines.push(`order: ${view.order}`);
+  }
+  lines.push(`sort: ${view.sort ? quote(view.sort) : 'null'}`);
+
+  if (view.filters && view.filters.nodes.length > 0) {
+    lines.push('filters:');
+    lines.push(`  ${view.filters.combinator}:`);
+    for (const node of view.filters.nodes) {
+      lines.push(...serializeNode(node, '  '));
+    }
+  }
+  return `${lines.join('\n')}\n`;
+}

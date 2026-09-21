@@ -150,6 +150,8 @@ export class WorkbenchStateService extends BaseService {
    */
   $selectedCollection = atom<SelectedCollection | undefined>(undefined);
 
+  $openCreateViewDialog = atom(false);
+
   $openWsDialog = atom(false);
   $openOmniSearch = atom(false);
   $themePref = atom<ThemeConfig['defaultPreference']>('system');

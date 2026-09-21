@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'vitest';
 import type { FilterableNote } from '../view';
-import { compareViews, evaluateFilter, parseViewDefinition } from '../view';
+import {
+  compareViews,
+  evaluateFilter,
+  parseViewDefinition,
+  serializeViewDefinition,
+} from '../view';
 
 const note = (over: Partial<FilterableNote> = {}): FilterableNote => ({
   title: 'A Note',
@@ -237,5 +242,103 @@ describe('evaluateFilter', () => {
     // they canonicalize together and still match each other.
     expect(run(yaml, note({ frontmatter: { country: 'NO' } }))).toBe(true);
     expect(run(yaml, note({ frontmatter: { country: 'SE' } }))).toBe(false);
+  });
+});
+
+describe('serializeViewDefinition', () => {
+  test('round-trips through the parser', () => {
+    const yaml = serializeViewDefinition({
+      name: 'Active Projects',
+      order: 2,
+      filters: {
+        combinator: 'all',
+        nodes: [
+          { field: 'type', op: 'equals', value: 'Project' },
+          { field: 'status', op: 'is_not_empty' },
+        ],
+      },
+    });
+
+    const parsed = parseViewDefinition({ id: 'active-projects', yaml });
+    expect(parsed).toMatchObject({ name: 'Active Projects', order: 2 });
+    expect(parsed?.filters).toEqual({
+      combinator: 'all',
+      nodes: [
+        { field: 'type', op: 'equals', value: 'Project', regex: false },
+        { field: 'status', op: 'is_not_empty', value: undefined, regex: false },
+      ],
+    });
+  });
+
+  test('omits value for operators that take none', () => {
+    const yaml = serializeViewDefinition({
+      name: 'V',
+      filters: {
+        combinator: 'all',
+        nodes: [{ field: 'topic', op: 'is_empty', value: 'ignored' }],
+      },
+    });
+    expect(yaml).not.toContain('value:');
+  });
+
+  test('keeps plain words unquoted so files stay hand-editable', () => {
+    const yaml = serializeViewDefinition({
+      name: 'Reading List',
+      filters: {
+        combinator: 'any',
+        nodes: [{ field: 'Project', op: 'equals', value: 'islamic' }],
+      },
+    });
+    expect(yaml).toContain('value: islamic');
+    expect(yaml).toContain('  any:');
+  });
+
+  test('quotes values YAML would otherwise reinterpret', () => {
+    const yaml = serializeViewDefinition({
+      name: 'V',
+      filters: {
+        combinator: 'all',
+        nodes: [{ field: 'Pinned', op: 'equals', value: 'Yes' }],
+      },
+    });
+    // Bare `Yes` risks being read as a boolean by other tools.
+    expect(yaml).toContain('value: "Yes"');
+  });
+
+  test('round-trips a nested group', () => {
+    const yaml = serializeViewDefinition({
+      name: 'Nested',
+      filters: {
+        combinator: 'all',
+        nodes: [
+          { field: 'type', op: 'equals', value: 'Library' },
+          {
+            combinator: 'any',
+            nodes: [
+              { field: 'Project', op: 'equals', value: 'a' },
+              { field: 'Project', op: 'equals', value: 'b' },
+            ],
+          },
+        ],
+      },
+    });
+    const parsed = parseViewDefinition({ id: 'n', yaml });
+    expect(parsed?.filters?.nodes).toHaveLength(2);
+    const nested = parsed?.filters?.nodes[1];
+    expect(nested && 'combinator' in nested && nested.combinator).toBe('any');
+  });
+
+  test('preserves regex only where it applies', () => {
+    const yaml = serializeViewDefinition({
+      name: 'V',
+      filters: {
+        combinator: 'all',
+        nodes: [
+          { field: 'title', op: 'contains', value: '^W', regex: true },
+          { field: 'topic', op: 'is_empty', regex: true },
+        ],
+      },
+    });
+    expect(yaml.match(/regex: true/g)).toHaveLength(1);
   });
 });

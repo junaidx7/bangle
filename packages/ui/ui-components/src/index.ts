@@ -131,6 +131,11 @@ export { StarButton } from './star-button';
 export { Toaster, toast } from './toaster';
 export type { Action, ActionVariant } from './types';
 export type {
+  ViewBuilderDialogProps,
+  ViewBuilderResult,
+} from './view-builder-dialog';
+export { ViewBuilderDialog } from './view-builder-dialog';
+export type {
   CreateWorkspaceDialogProps,
   DirectoryPickResult,
   ErrorInfo,

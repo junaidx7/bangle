@@ -23,4 +23,11 @@ export type {
   FilterOp,
   ViewDefinition,
 } from './view';
-export { compareViews, evaluateFilter, parseViewDefinition } from './view';
+export {
+  compareViews,
+  evaluateFilter,
+  parseViewDefinition,
+  REGEX_OPS,
+  serializeViewDefinition,
+  VALUELESS_OPS,
+} from './view';

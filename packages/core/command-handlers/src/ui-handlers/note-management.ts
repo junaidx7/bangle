@@ -35,33 +35,10 @@ export const noteManagementHandlers = [
     },
   ),
 
-  c(
-    'command::ui:create-view-dialog',
-    (
-      { workbenchState, workspaceState, fileSystem, navigation },
-      _args,
-      key,
-    ) => {
-      const { store } = getCtx(key);
-      store.set(workbenchState.$singleInputDialog, () => ({
-        dialogId: 'dialog::new-view-dialog',
-        title: t.app.dialogs.createView.title,
-        description: t.app.dialogs.createView.description,
-        inputLabel: t.app.dialogs.createView.inputLabel,
-        placeholder: t.app.dialogs.createView.placeholder,
-        submitText: t.app.dialogs.createView.submitText,
-        onSelect: (input) => {
-          void createViewFile({
-            name: input,
-            wsName: store.get(workspaceState.$currentWsName),
-            existing: store.get(workspaceState.$noteMetaIndex).views,
-            fileSystem,
-            navigation,
-          });
-        },
-      }));
-    },
-  ),
+  c('command::ui:create-view-dialog', ({ workbenchState }, _args, key) => {
+    const { store } = getCtx(key);
+    store.set(workbenchState.$openCreateViewDialog, true);
+  }),
 
   c(
     'command::ui:create-note-dialog',
@@ -720,56 +697,6 @@ async function createTypeDocument({
     '---',
     '',
     `# ${trimmed}`,
-    '',
-  ].join('\n');
-
-  await fileSystem.createTextFile(wsPath, body);
-  navigation.goWsPath(wsPath);
-}
-
-async function createViewFile({
-  name,
-  wsName,
-  existing,
-  fileSystem,
-  navigation,
-}: {
-  name: string;
-  wsName: string | undefined;
-  existing: readonly { id: string }[];
-  fileSystem: {
-    createTextFile: (wsPath: string, text: string) => Promise<void>;
-  };
-  navigation: { goWsPath: (wsPath: string) => void };
-}): Promise<void> {
-  const trimmed = name.trim();
-  const slug = toSlug(trimmed);
-  if (!wsName || !trimmed || !slug) {
-    return;
-  }
-
-  if (existing.some((view) => view.id === slug)) {
-    toast.error(t.app.errors.workspace.viewAlreadyExists({ name: trimmed }));
-    return;
-  }
-
-  // Seeded with a filter that matches everything, so a new view lists the
-  // whole workspace and can be narrowed by editing it, rather than appearing
-  // broken because it matches nothing.
-  const wsPath = WsPath.fromParts(
-    wsName,
-    `${VIEWS_DIRECTORY}/${slug}.yml`,
-  ).wsPath;
-  const body = [
-    `name: ${trimmed}`,
-    'icon: null',
-    'color: null',
-    `order: ${existing.length}`,
-    'sort: null',
-    'filters:',
-    '  all:',
-    '  - field: title',
-    '    op: is_not_empty',
     '',
   ].join('\n');
 

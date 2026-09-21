@@ -1203,6 +1203,9 @@ importers:
       '@bangle.io/constants':
         specifier: workspace:*
         version: link:../../shared/constants
+      '@bangle.io/note-meta':
+        specifier: workspace:*
+        version: link:../../js-lib/note-meta
       '@bangle.io/types':
         specifier: workspace:*
         version: link:../../shared/types
