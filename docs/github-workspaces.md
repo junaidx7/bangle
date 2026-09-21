@@ -89,3 +89,11 @@ successful sync.
   notification when the repo changes elsewhere.
 
 [token-link]: https://github.com/settings/personal-access-tokens/new
+
+## Deploying
+
+The app keeps route data in the URL hash but still serves from the `/ws` path
+(`basePath` in the router setup), so a reload requests `/ws` from the host.
+Any static host must therefore fall back to `index.html` for unmatched paths
+or that reload is a 404. Cloudflare Pages does this by default; Vercel needs
+the rewrite in `vercel.json` at the repository root.
