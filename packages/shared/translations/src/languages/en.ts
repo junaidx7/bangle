@@ -534,6 +534,16 @@ export const t = {
           'GitHub rejected the token. Check that it has not expired and grants Contents: Read and write.',
         githubRepoNotFound:
           'Repository not found. Check the name, and that the token grants access to it.',
+        githubRepoNotFoundForToken: ({
+          login,
+          owner,
+          repo,
+        }: {
+          login: string;
+          owner: string;
+          repo: string;
+        }) =>
+          `The token works — it belongs to @${login} — but cannot see ${owner}/${repo}. For a private repository the token's Repository access must list it; the default "Public repositories" cannot see private repos. Check that Resource owner is ${owner} too.`,
       },
       allFiles: {
         title: 'All Files',

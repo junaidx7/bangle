@@ -461,6 +461,16 @@ export const t = {
           'GitHub hat das Token abgelehnt. Prufe, ob es abgelaufen ist und Contents: Read and write erlaubt.',
         githubRepoNotFound:
           'Repository nicht gefunden. Prufe den Namen und die Berechtigungen des Tokens.',
+        githubRepoNotFoundForToken: ({
+          login,
+          owner,
+          repo,
+        }: {
+          login: string;
+          owner: string;
+          repo: string;
+        }) =>
+          `Das Token funktioniert — es gehort zu @${login} — kann aber ${owner}/${repo} nicht sehen. Bei einem privaten Repository muss es unter Repository access aufgefuhrt sein; die Standardoption "Public repositories" sieht keine privaten Repositories. Prufe auch, ob Resource owner ${owner} ist.`,
       },
       allFiles: {
         title: 'Alle Dateien',

@@ -184,10 +184,20 @@ async function verifyGithubAccess(
         };
       }
       if (error.code === 'not-found') {
+        // GitHub answers 404 both for a repository that does not exist and for
+        // one this token may not see. Asking who the token belongs to tells the
+        // two apart, so the message can name the actual fix.
+        const login = await api.getAuthenticatedLogin();
         return {
           type: 'error',
           errorInfo: {
-            message: t.app.dialogs.createWorkspace.githubRepoNotFound,
+            message: login
+              ? t.app.dialogs.createWorkspace.githubRepoNotFoundForToken({
+                  login,
+                  owner: input.owner,
+                  repo: input.repo,
+                })
+              : t.app.dialogs.createWorkspace.githubRepoNotFound,
           },
         };
       }

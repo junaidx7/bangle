@@ -169,6 +169,26 @@ export class GithubApi {
     };
   }
 
+  /**
+   * The login this token belongs to, or undefined when the token itself is bad.
+   *
+   * Exists to separate two failures GitHub deliberately reports identically:
+   * a repository that does not exist and one the token is not allowed to see
+   * both come back as 404, to avoid leaking which private repos exist. Knowing
+   * the token is otherwise valid turns "not found" into a specific instruction
+   * about repository access rather than a dead end.
+   */
+  async getAuthenticatedLogin(
+    signal?: AbortSignal,
+  ): Promise<string | undefined> {
+    try {
+      const user = await this.request<{ login: string }>('user', { signal });
+      return user.login;
+    } catch {
+      return undefined;
+    }
+  }
+
   async getHead(signal?: AbortSignal): Promise<RemoteHead> {
     const ref = await this.request<{ object: { sha: string } }>(
       `${this.repoPath}/git/ref/heads/${encodeURIComponent(this.branch)}`,

@@ -290,3 +290,35 @@ describe('verifyAccess', () => {
     });
   });
 });
+
+describe('getAuthenticatedLogin', () => {
+  test('returns the login a working token belongs to', async () => {
+    const { api } = makeApi((url) =>
+      url.endsWith('/user')
+        ? jsonResponse({ login: 'octocat' })
+        : new Response('no', { status: 404 }),
+    );
+    await expect(api.getAuthenticatedLogin()).resolves.toBe('octocat');
+  });
+
+  test('returns undefined for a bad token rather than throwing', async () => {
+    // The caller is already handling one failure when it asks; a throw here
+    // would replace a specific message with an unrelated one.
+    const { api } = makeApi(() => new Response('bad creds', { status: 401 }));
+    await expect(api.getAuthenticatedLogin()).resolves.toBeUndefined();
+  });
+
+  test('returns undefined when the network is down', async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    }) as unknown as typeof fetch;
+    const api = new GithubApi({
+      owner: 'o',
+      repo: 'r',
+      branch: 'main',
+      token: 't',
+      fetchImpl,
+    });
+    await expect(api.getAuthenticatedLogin()).resolves.toBeUndefined();
+  });
+});
